@@ -1,0 +1,5 @@
+aws_region = "us-east-1"
+project_name = "cicd-demo"
+github_owner = "your-github-username"
+github_repo = "your-repo-name"
+codestar_connection_arn = "arn:aws:codestar-connections:us-east-1:123456789012:connection/your-connection-id"

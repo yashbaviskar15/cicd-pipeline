@@ -1,0 +1,129 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - aws --version
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - IMAGE_TAG=${COMMIT_HASH:=latest}
+  build:
+    commands:
+      - echo Build started on `date`
+      - echo Building the Docker images...
+      - cd backend && docker build -t $ECR_BACKEND_REPO:$IMAGE_TAG .
+      - docker tag $ECR_BACKEND_REPO:$IMAGE_TAG $ECR_BACKEND_REPO:latest
+      - cd ../frontend && docker build -t $ECR_FRONTEND_REPO:$IMAGE_TAG .
+      - docker tag $ECR_FRONTEND_REPO:$IMAGE_TAG $ECR_FRONTEND_REPO:latest
+      - cd ..
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - echo Pushing the Docker images...
+      - docker push $ECR_BACKEND_REPO:$IMAGE_TAG
+      - docker push $ECR_BACKEND_REPO:latest
+      - docker push $ECR_FRONTEND_REPO:$IMAGE_TAG
+      - docker push $ECR_FRONTEND_REPO:latest
+      - echo Generating task definitions and appspecs...
+      - printf '[{"name":"backend","imageUri":"%s"}]' $ECR_BACKEND_REPO:$IMAGE_TAG > backend-imageDetail.json
+      - printf '[{"name":"frontend","imageUri":"%s"}]' $ECR_FRONTEND_REPO:$IMAGE_TAG > frontend-imageDetail.json
+      - cp terraform/ecs.tf /tmp/ecs.tf
+      - |
+        cat > backend-task-def.json <<EOF
+        {
+          "family": "cicd-demo-backend",
+          "networkMode": "awsvpc",
+          "requiresCompatibilities": ["FARGATE"],
+          "cpu": "256",
+          "memory": "512",
+          "executionRoleArn": "$CODEBUILD_BUILD_ARN",
+          "taskRoleArn": "$CODEBUILD_BUILD_ARN",
+          "containerDefinitions": [
+            {
+              "name": "backend",
+              "image": "$ECR_BACKEND_REPO:$IMAGE_TAG",
+              "portMappings": [
+                {
+                  "containerPort": 3000,
+                  "hostPort": 3000,
+                  "protocol": "tcp"
+                }
+              ],
+              "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                  "awslogs-group": "/ecs/cicd-demo-backend",
+                  "awslogs-region": "$AWS_DEFAULT_REGION",
+                  "awslogs-stream-prefix": "ecs"
+                }
+              }
+            }
+          ]
+        }
+        EOF
+      - |
+        cat > frontend-task-def.json <<EOF
+        {
+          "family": "cicd-demo-frontend",
+          "networkMode": "awsvpc",
+          "requiresCompatibilities": ["FARGATE"],
+          "cpu": "256",
+          "memory": "512",
+          "executionRoleArn": "$CODEBUILD_BUILD_ARN",
+          "taskRoleArn": "$CODEBUILD_BUILD_ARN",
+          "containerDefinitions": [
+            {
+              "name": "frontend",
+              "image": "$ECR_FRONTEND_REPO:$IMAGE_TAG",
+              "portMappings": [
+                {
+                  "containerPort": 80,
+                  "hostPort": 80,
+                  "protocol": "tcp"
+                }
+              ],
+              "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                  "awslogs-group": "/ecs/cicd-demo-frontend",
+                  "awslogs-region": "$AWS_DEFAULT_REGION",
+                  "awslogs-stream-prefix": "ecs"
+                }
+              }
+            }
+          ]
+        }
+        EOF
+      - |
+        cat > backend-appspec.yaml <<EOF
+        version: 0.0
+        Resources:
+          - TargetService:
+              Type: AWS::ECS::Service
+              Properties:
+                TaskDefinition: "<TASK_DEFINITION>"
+                LoadBalancerInfo:
+                  ContainerName: "backend"
+                  ContainerPort: 3000
+        EOF
+      - |
+        cat > frontend-appspec.yaml <<EOF
+        version: 0.0
+        Resources:
+          - TargetService:
+              Type: AWS::ECS::Service
+              Properties:
+                TaskDefinition: "<TASK_DEFINITION>"
+                LoadBalancerInfo:
+                  ContainerName: "frontend"
+                  ContainerPort: 80
+        EOF
+artifacts:
+  files:
+    - backend-imageDetail.json
+    - frontend-imageDetail.json
+    - backend-task-def.json
+    - frontend-task-def.json
+    - backend-appspec.yaml
+    - frontend-appspec.yaml
