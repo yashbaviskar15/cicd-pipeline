@@ -132,9 +132,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👨‍💻 Author
 
-[Your Name]
-- GitHub: [@your-username]
-- LinkedIn: [Your LinkedIn Profile]
+Yash Baviskar 
+- GitHub: @yashbaviskar15
+- LinkedIn: https://www.linkedin.com/in/yashbaviskar15
 
 ## 🌟 Star This Project
 
