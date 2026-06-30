@@ -1,6 +1,6 @@
 # CI/CD Pipeline with Docker, GitHub Actions & AWS
 
-[![CI Pipeline](https://github.com/[your-username]/[your-repo]/actions/workflows/ci.yml/badge.svg)](https://github.com/[your-username]/[your-repo]/actions/workflows/ci.yml)
+[![CI Pipeline](https://github.com/yashbaviskar15/cicd-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/yashbaviskar15/cicd-pipeline/actions/workflows/ci.yml)
 
 ## 📋 Project Overview
 A complete, production-style CI/CD pipeline demonstration project built for DevOps portfolios. This project showcases modern DevOps practices including Infrastructure as Code, containerization, automated testing, blue/green deployments, and monitoring.
