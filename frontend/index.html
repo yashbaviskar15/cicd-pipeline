@@ -5,539 +5,646 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CI/CD Pipeline Dashboard</title>
     <style>
-        /* ========== Design Tokens ========== */
         :root {
-            --c-bg: #0b0f1a;
-            --c-surface: #141925;
-            --c-surface-hover: #1a2030;
-            --c-border: #1e2638;
-            --c-border-active: #334155;
-            --c-text: #e2e8f0;
-            --c-text-muted: #64748b;
-            --c-text-dim: #475569;
-            --c-accent: #3b82f6;
-            --c-accent-glow: rgba(59,130,246,0.15);
-            --c-accent-hover: #2563eb;
-            --c-success: #22c55e;
-            --c-success-bg: rgba(34,197,94,0.08);
-            --c-error: #ef4444;
-            --c-error-bg: rgba(239,68,68,0.08);
-            --c-warn: #f59e0b;
-            --c-warn-bg: rgba(245,158,11,0.08);
-            --c-code-bg: #0d1117;
-            --radius: 12px;
-            --radius-sm: 8px;
-            --shadow: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
-            --transition: 150ms cubic-bezier(.4,0,.2,1);
-            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-            --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+            --white: #ffffff;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+            --blue-500: #3b82f6;
+            --blue-600: #2563eb;
+            --blue-50: #eff6ff;
+            --green-500: #10b981;
+            --green-50: #ecfdf5;
+            --green-700: #047857;
+            --red-500: #ef4444;
+            --red-50: #fef2f2;
+            --red-700: #b91c1c;
+            --amber-500: #f59e0b;
+            --amber-50: #fffbeb;
         }
 
-        /* ========== Reset & Base ========== */
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-        html { font-size: 15px; -webkit-font-smoothing: antialiased; }
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
         body {
-            font-family: var(--font-sans);
-            background: var(--c-bg);
-            color: var(--c-text);
-            min-height: 100vh;
-            line-height: 1.6;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--gray-50);
+            color: var(--gray-800);
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
         }
 
-        /* ========== Layout ========== */
-        .page { max-width: 880px; margin: 0 auto; padding: 48px 24px 64px; }
-
-        /* ========== Header ========== */
-        .header { margin-bottom: 40px; text-align: center; }
-
-        .header-badge {
-            display: inline-flex; align-items: center; gap: 6px;
-            padding: 5px 14px; border-radius: 999px;
-            font-size: 0.75rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
-            background: var(--c-accent-glow); color: var(--c-accent); border: 1px solid rgba(59,130,246,0.2);
-            margin-bottom: 16px;
+        /* -- Nav -- */
+        .nav {
+            background: var(--white);
+            border-bottom: 1px solid var(--gray-200);
+            padding: 0 24px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 10;
         }
-        .header-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--c-accent); }
-
-        .header h1 { font-size: 2rem; font-weight: 700; color: #f8fafc; letter-spacing: -0.02em; }
-        .header p { color: var(--c-text-muted); margin-top: 8px; font-size: 0.95rem; }
-
-        /* ========== Status Grid ========== */
-        .status-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px; margin-bottom: 24px;
+        .nav-brand {
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: var(--gray-900);
+            text-decoration: none;
+            letter-spacing: -0.01em;
+        }
+        .nav-links {
+            display: flex;
+            gap: 20px;
+        }
+        .nav-links a {
+            font-size: 0.82rem;
+            color: var(--gray-500);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .nav-links a:hover {
+            color: var(--gray-800);
         }
 
-        .stat-card {
-            background: var(--c-surface); border: 1px solid var(--c-border);
-            border-radius: var(--radius); padding: 20px;
-            transition: border-color var(--transition), box-shadow var(--transition);
+        /* -- Main -- */
+        .main {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 32px 20px 60px;
         }
-        .stat-card:hover { border-color: var(--c-border-active); box-shadow: var(--shadow); }
 
-        .stat-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--c-text-muted); margin-bottom: 8px; }
-        .stat-value { font-size: 1.5rem; font-weight: 700; color: #f8fafc; }
-        .stat-sub { font-size: 0.8rem; color: var(--c-text-dim); margin-top: 4px; }
+        .page-title {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: 4px;
+        }
+        .page-sub {
+            font-size: 0.85rem;
+            color: var(--gray-500);
+            margin-bottom: 28px;
+        }
 
-        .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; position: relative; top: -1px; }
-        .dot.green { background: var(--c-success); box-shadow: 0 0 8px rgba(34,197,94,0.5); }
-        .dot.red { background: var(--c-error); box-shadow: 0 0 8px rgba(239,68,68,0.5); }
-        .dot.yellow { background: var(--c-warn); box-shadow: 0 0 8px rgba(245,158,11,0.5); }
-        .dot.pulse { animation: pulse 2s ease-in-out infinite; }
-        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+        /* -- Metric row -- */
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .metric {
+            background: var(--white);
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            padding: 16px;
+        }
+        .metric-label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--gray-400);
+            margin-bottom: 6px;
+        }
+        .metric-val {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--gray-900);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .metric-note {
+            font-size: 0.72rem;
+            color: var(--gray-400);
+            margin-top: 2px;
+        }
 
-        /* ========== Cards ========== */
+        .indicator {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+        .indicator.green { background: var(--green-500); }
+        .indicator.red { background: var(--red-500); }
+        .indicator.amber { background: var(--amber-500); }
+
+        /* -- Card -- */
         .card {
-            background: var(--c-surface); border: 1px solid var(--c-border);
-            border-radius: var(--radius); margin-bottom: 24px;
-            overflow: hidden; box-shadow: var(--shadow);
+            background: var(--white);
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            margin-bottom: 20px;
+            overflow: hidden;
         }
-        .card-header {
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 18px 24px; border-bottom: 1px solid var(--c-border);
+        .card-head {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--gray-100);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
-        .card-title { font-size: 1rem; font-weight: 600; color: #f8fafc; display: flex; align-items: center; gap: 8px; }
-        .card-body { padding: 24px; }
-
-        /* ========== URL Input Row ========== */
-        .url-row { display: flex; gap: 12px; align-items: stretch; margin-bottom: 20px; flex-wrap: wrap; }
-
-        .url-input-wrapper {
-            flex: 1; min-width: 260px; position: relative;
+        .card-head-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--gray-800);
         }
-        .url-input-wrapper label {
-            display: block; font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
-            letter-spacing: 0.05em; color: var(--c-text-muted); margin-bottom: 6px;
-        }
-        .url-input {
-            width: 100%; padding: 10px 14px; font-size: 0.9rem; font-family: var(--font-mono);
-            background: var(--c-code-bg); color: var(--c-text); border: 1px solid var(--c-border);
-            border-radius: var(--radius-sm); outline: none; transition: border-color var(--transition);
-        }
-        .url-input:focus { border-color: var(--c-accent); box-shadow: 0 0 0 3px var(--c-accent-glow); }
-        .url-input::placeholder { color: var(--c-text-dim); }
-
-        .env-tag {
-            position: absolute; top: 28px; right: 8px;
-            font-size: 0.65rem; font-weight: 700; letter-spacing: 0.04em;
-            padding: 3px 8px; border-radius: 4px; text-transform: uppercase; pointer-events: none;
-        }
-        .env-tag.local { background: var(--c-warn-bg); color: var(--c-warn); }
-        .env-tag.prod { background: var(--c-success-bg); color: var(--c-success); }
-
-        /* ========== Endpoint Buttons ========== */
-        .endpoints { display: flex; gap: 8px; flex-wrap: wrap; }
-
-        .ep-btn {
-            display: inline-flex; align-items: center; gap: 6px;
-            padding: 9px 18px; font-size: 0.85rem; font-weight: 500;
-            font-family: var(--font-sans); cursor: pointer;
-            border: 1px solid var(--c-border); border-radius: var(--radius-sm);
-            background: var(--c-surface); color: var(--c-text);
-            transition: all var(--transition); white-space: nowrap;
-        }
-        .ep-btn:hover { border-color: var(--c-accent); background: var(--c-accent-glow); color: #f8fafc; }
-        .ep-btn:active { transform: scale(0.97); }
-        .ep-btn.loading { pointer-events: none; opacity: 0.6; }
-
-        .ep-method {
-            font-size: 0.7rem; font-weight: 700; padding: 2px 6px;
-            border-radius: 4px; background: rgba(59,130,246,0.12); color: var(--c-accent);
-            font-family: var(--font-mono);
-        }
-        .ep-path { font-family: var(--font-mono); }
-
-        .ep-btn-run-all {
-            padding: 9px 20px; font-size: 0.85rem; font-weight: 600;
-            font-family: var(--font-sans); cursor: pointer;
-            border: none; border-radius: var(--radius-sm);
-            background: var(--c-accent); color: #fff;
-            transition: all var(--transition);
-        }
-        .ep-btn-run-all:hover { background: var(--c-accent-hover); }
-        .ep-btn-run-all:active { transform: scale(0.97); }
-
-        /* ========== Response Panel ========== */
-        .response-panel { margin-top: 20px; display: none; }
-        .response-panel.visible { display: block; animation: fadeSlide 250ms ease-out; }
-
-        @keyframes fadeSlide {
-            from { opacity: 0; transform: translateY(8px); }
-            to   { opacity: 1; transform: translateY(0); }
+        .card-content {
+            padding: 20px;
         }
 
-        .resp-bar {
-            display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
-            padding: 12px 16px; border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+        /* -- URL bar -- */
+        .url-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 18px;
         }
-        .resp-bar.ok { background: var(--c-success-bg); border: 1px solid rgba(34,197,94,0.15); }
-        .resp-bar.fail { background: var(--c-error-bg); border: 1px solid rgba(239,68,68,0.15); }
+        .url-field {
+            flex: 1;
+        }
+        .url-field label {
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--gray-500);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .url-field input {
+            width: 100%;
+            padding: 8px 12px;
+            font-size: 0.82rem;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            border: 1px solid var(--gray-200);
+            border-radius: 6px;
+            background: var(--gray-50);
+            color: var(--gray-800);
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        .url-field input:focus {
+            border-color: var(--blue-500);
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+        }
 
-        .resp-status { font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; gap: 8px; }
-        .resp-bar.ok .resp-status { color: var(--c-success); }
-        .resp-bar.fail .resp-status { color: var(--c-error); }
+        .env-label {
+            display: inline-block;
+            font-size: 0.62rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            padding: 2px 6px;
+            border-radius: 3px;
+            text-transform: uppercase;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+        .env-label.local { background: var(--amber-50); color: var(--amber-500); }
+        .env-label.prod { background: var(--green-50); color: var(--green-700); }
 
-        .resp-meta { display: flex; gap: 16px; font-size: 0.75rem; color: var(--c-text-muted); }
-        .resp-meta span { display: flex; align-items: center; gap: 4px; }
+        /* -- Buttons -- */
+        .btn-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 7px 14px;
+            font-size: 0.78rem;
+            font-weight: 500;
+            font-family: inherit;
+            border: 1px solid var(--gray-200);
+            border-radius: 6px;
+            background: var(--white);
+            color: var(--gray-700);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.12s;
+        }
+        .btn:hover {
+            border-color: var(--gray-300);
+            background: var(--gray-50);
+        }
+        .btn:active { transform: scale(0.98); }
+        .btn.loading { opacity: 0.5; pointer-events: none; }
 
-        .resp-body {
-            background: var(--c-code-bg); padding: 16px 20px;
-            border-radius: 0 0 var(--radius-sm) var(--radius-sm);
-            border: 1px solid var(--c-border); border-top: none;
+        .btn-primary {
+            background: var(--gray-900);
+            color: var(--white);
+            border-color: var(--gray-900);
+        }
+        .btn-primary:hover {
+            background: var(--gray-700);
+            border-color: var(--gray-700);
+        }
+
+        .method-tag {
+            font-size: 0.62rem;
+            font-weight: 700;
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            padding: 1px 5px;
+            border-radius: 3px;
+            background: var(--blue-50);
+            color: var(--blue-600);
+        }
+        .path-tag {
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            font-size: 0.78rem;
+        }
+
+        /* -- Response -- */
+        .response {
+            margin-top: 18px;
+            display: none;
+            border: 1px solid var(--gray-200);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .response.show {
+            display: block;
+            animation: slideIn 0.2s ease-out;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .resp-header {
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
+        .resp-header.ok { background: var(--green-50); color: var(--green-700); border-bottom: 1px solid #d1fae5; }
+        .resp-header.err { background: var(--red-50); color: var(--red-700); border-bottom: 1px solid #fecaca; }
+
+        .resp-info {
+            font-size: 0.72rem;
+            font-weight: 400;
+            color: var(--gray-500);
+            display: flex;
+            gap: 14px;
+        }
+
+        .resp-code {
+            background: var(--white);
+            padding: 14px 16px;
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            font-size: 0.78rem;
+            line-height: 1.6;
+            color: var(--gray-700);
             overflow-x: auto;
-        }
-        .resp-body pre {
-            margin: 0; font-family: var(--font-mono); font-size: 0.82rem;
-            line-height: 1.7; color: var(--c-text); white-space: pre-wrap; word-break: break-word;
+            white-space: pre-wrap;
+            word-break: break-word;
         }
 
-        /* JSON syntax highlights */
-        .json-key { color: #7dd3fc; }
-        .json-str { color: #86efac; }
-        .json-num { color: #fbbf24; }
-        .json-bool { color: #c084fc; }
-        .json-null { color: #94a3b8; font-style: italic; }
-
-        /* ========== History Log ========== */
-        .history-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
-        .history-table th {
-            text-align: left; padding: 10px 16px; font-weight: 600; font-size: 0.7rem;
-            text-transform: uppercase; letter-spacing: 0.06em; color: var(--c-text-muted);
-            border-bottom: 1px solid var(--c-border);
+        /* -- Table -- */
+        .tbl {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.78rem;
         }
-        .history-table td { padding: 10px 16px; border-bottom: 1px solid var(--c-border); vertical-align: middle; }
-        .history-table tr:last-child td { border-bottom: none; }
-        .history-table tr:hover td { background: var(--c-surface-hover); }
-        .history-table .mono { font-family: var(--font-mono); font-size: 0.8rem; }
-
-        .badge-sm {
-            display: inline-block; padding: 2px 8px; border-radius: 4px;
-            font-size: 0.7rem; font-weight: 700; font-family: var(--font-mono);
+        .tbl th {
+            text-align: left;
+            padding: 9px 20px;
+            font-size: 0.68rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--gray-400);
+            border-bottom: 1px solid var(--gray-100);
+            background: var(--gray-50);
         }
-        .badge-ok { background: var(--c-success-bg); color: var(--c-success); }
-        .badge-err { background: var(--c-error-bg); color: var(--c-error); }
+        .tbl td {
+            padding: 9px 20px;
+            border-bottom: 1px solid var(--gray-100);
+            color: var(--gray-600);
+        }
+        .tbl tr:last-child td { border-bottom: none; }
+        .tbl tr:hover td { background: var(--gray-50); }
+        .tbl .mono {
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            font-size: 0.76rem;
+        }
 
-        .empty-state { text-align: center; padding: 32px; color: var(--c-text-dim); font-size: 0.9rem; }
+        .status-pill {
+            display: inline-block;
+            padding: 1px 7px;
+            border-radius: 3px;
+            font-size: 0.68rem;
+            font-weight: 600;
+            font-family: 'SFMono-Regular', Consolas, monospace;
+        }
+        .status-pill.ok { background: var(--green-50); color: var(--green-700); }
+        .status-pill.err { background: var(--red-50); color: var(--red-700); }
 
-        /* ========== Footer ========== */
+        .empty-msg {
+            padding: 28px 20px;
+            text-align: center;
+            color: var(--gray-400);
+            font-size: 0.82rem;
+        }
+
+        /* -- Footer -- */
         .footer {
-            text-align: center; margin-top: 48px; padding-top: 24px;
-            border-top: 1px solid var(--c-border); color: var(--c-text-dim); font-size: 0.8rem;
+            text-align: center;
+            padding-top: 28px;
+            font-size: 0.75rem;
+            color: var(--gray-400);
         }
-        .footer a { color: var(--c-accent); text-decoration: none; }
-        .footer a:hover { text-decoration: underline; }
+        .footer a {
+            color: var(--gray-500);
+            text-decoration: none;
+        }
+        .footer a:hover {
+            color: var(--gray-700);
+            text-decoration: underline;
+        }
 
-        /* ========== Responsive ========== */
-        @media (max-width: 640px) {
-            .page { padding: 24px 16px 48px; }
-            .header h1 { font-size: 1.5rem; }
-            .status-grid { grid-template-columns: 1fr 1fr; }
-            .url-row { flex-direction: column; }
-            .card-header { padding: 14px 16px; }
-            .card-body { padding: 16px; }
-            .resp-bar { flex-direction: column; align-items: flex-start; }
+        /* -- Responsive -- */
+        @media (max-width: 700px) {
+            .metrics { grid-template-columns: repeat(2, 1fr); }
+            .nav-links { display: none; }
+            .main { padding: 20px 16px 48px; }
+        }
+        @media (max-width: 420px) {
+            .metrics { grid-template-columns: 1fr 1fr; gap: 8px; }
+            .metric { padding: 12px; }
+            .metric-val { font-size: 1rem; }
+            .url-bar { flex-direction: column; }
+            .btn-row { flex-direction: column; }
+            .btn { width: 100%; justify-content: center; }
+            .resp-header { flex-direction: column; align-items: flex-start; }
+            .resp-info { flex-direction: column; gap: 4px; }
+            .tbl th, .tbl td { padding: 8px 12px; }
+            .card-content { padding: 14px; }
         }
     </style>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="page">
-        <!-- Header -->
-        <header class="header">
-            <div class="header-badge">CI/CD Pipeline</div>
-            <h1>Service Dashboard</h1>
-            <p>Real-time status monitoring for your backend microservice</p>
-        </header>
 
-        <!-- Status Grid -->
-        <section class="status-grid" id="status-grid">
-            <div class="stat-card">
-                <div class="stat-label">Frontend</div>
-                <div class="stat-value"><span class="dot green pulse"></span>Online</div>
-                <div class="stat-sub">v1.0.0</div>
+    <nav class="nav">
+        <a href="/" class="nav-brand">cicd-pipeline</a>
+        <div class="nav-links">
+            <a href="https://github.com/yashbaviskar15/cicd-pipeline" target="_blank">GitHub</a>
+            <a href="https://cicd-pipeline-backend.vercel.app/health" target="_blank">API</a>
+        </div>
+    </nav>
+
+    <div class="main">
+
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-sub">Service health and API testing for the CI/CD pipeline project.</p>
+
+        <!-- Metrics -->
+        <div class="metrics">
+            <div class="metric">
+                <div class="metric-label">Frontend</div>
+                <div class="metric-val"><span class="indicator green"></span> Online</div>
+                <div class="metric-note">v1.0.0</div>
             </div>
-            <div class="stat-card">
-                <div class="stat-label">Backend</div>
-                <div class="stat-value" id="backend-status"><span class="dot yellow pulse" id="backend-dot"></span>Checking</div>
-                <div class="stat-sub" id="backend-version">—</div>
+            <div class="metric">
+                <div class="metric-label">Backend</div>
+                <div class="metric-val" id="m-backend"><span class="indicator amber" id="m-backend-dot"></span> Checking</div>
+                <div class="metric-note" id="m-backend-note">--</div>
             </div>
-            <div class="stat-card">
-                <div class="stat-label">Latency</div>
-                <div class="stat-value" id="latency-value">—</div>
-                <div class="stat-sub" id="latency-sub">Not measured</div>
+            <div class="metric">
+                <div class="metric-label">Latency</div>
+                <div class="metric-val" id="m-latency">--</div>
+                <div class="metric-note" id="m-latency-note">Not measured</div>
             </div>
-            <div class="stat-card">
-                <div class="stat-label">Uptime</div>
-                <div class="stat-value" id="uptime-value">—</div>
-                <div class="stat-sub" id="uptime-sub">Backend server</div>
+            <div class="metric">
+                <div class="metric-label">Uptime</div>
+                <div class="metric-val" id="m-uptime">--</div>
+                <div class="metric-note">Server process</div>
             </div>
-        </section>
+        </div>
 
         <!-- API Explorer -->
-        <section class="card">
-            <div class="card-header">
-                <div class="card-title">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                    API Explorer
-                </div>
-                <button class="ep-btn-run-all" onclick="runAll()">Run All</button>
+        <div class="card">
+            <div class="card-head">
+                <span class="card-head-title">API Explorer</span>
+                <button class="btn btn-primary" onclick="runAll()">Run All</button>
             </div>
-            <div class="card-body">
-                <div class="url-row">
-                    <div class="url-input-wrapper">
-                        <label for="base-url">Backend URL</label>
-                        <input type="text" id="base-url" class="url-input" placeholder="https://..." />
-                        <span class="env-tag" id="env-tag">—</span>
+            <div class="card-content">
+                <div class="url-bar">
+                    <div class="url-field">
+                        <label for="base-url">
+                            Backend URL
+                            <span class="env-label" id="env-label">--</span>
+                        </label>
+                        <input type="text" id="base-url" placeholder="https://..." />
                     </div>
                 </div>
 
-                <div class="endpoints">
-                    <button class="ep-btn" onclick="callEndpoint('/')" data-ep="/">
-                        <span class="ep-method">GET</span>
-                        <span class="ep-path">/</span>
+                <div class="btn-row">
+                    <button class="btn" onclick="callEndpoint('/')" data-ep="/">
+                        <span class="method-tag">GET</span>
+                        <span class="path-tag">/</span>
                     </button>
-                    <button class="ep-btn" onclick="callEndpoint('/health')" data-ep="/health">
-                        <span class="ep-method">GET</span>
-                        <span class="ep-path">/health</span>
+                    <button class="btn" onclick="callEndpoint('/health')" data-ep="/health">
+                        <span class="method-tag">GET</span>
+                        <span class="path-tag">/health</span>
                     </button>
-                    <button class="ep-btn" onclick="callEndpoint('/api/data')" data-ep="/api/data">
-                        <span class="ep-method">GET</span>
-                        <span class="ep-path">/api/data</span>
+                    <button class="btn" onclick="callEndpoint('/api/data')" data-ep="/api/data">
+                        <span class="method-tag">GET</span>
+                        <span class="path-tag">/api/data</span>
                     </button>
                 </div>
 
-                <div class="response-panel" id="response-panel">
-                    <div class="resp-bar" id="resp-bar">
-                        <div class="resp-status" id="resp-status"></div>
-                        <div class="resp-meta" id="resp-meta"></div>
+                <div class="response" id="resp-panel">
+                    <div class="resp-header" id="resp-head">
+                        <span id="resp-status"></span>
+                        <div class="resp-info" id="resp-info"></div>
                     </div>
-                    <div class="resp-body">
-                        <pre id="resp-json"></pre>
-                    </div>
+                    <div class="resp-code" id="resp-body"></div>
                 </div>
             </div>
-        </section>
+        </div>
 
         <!-- Request History -->
-        <section class="card">
-            <div class="card-header">
-                <div class="card-title">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                    Request History
-                </div>
-                <button class="ep-btn" onclick="clearHistory()" style="font-size:0.75rem; padding:6px 12px;">Clear</button>
+        <div class="card">
+            <div class="card-head">
+                <span class="card-head-title">Request History</span>
+                <button class="btn" onclick="clearHistory()" style="font-size:0.72rem;padding:5px 10px;">Clear</button>
             </div>
-            <div class="card-body" style="padding:0;">
-                <div id="history-empty" class="empty-state">No requests yet. Click an endpoint above to get started.</div>
-                <table class="history-table" id="history-table" style="display:none;">
-                    <thead>
-                        <tr><th>Time</th><th>Endpoint</th><th>Status</th><th>Latency</th></tr>
-                    </thead>
-                    <tbody id="history-body"></tbody>
-                </table>
-            </div>
-        </section>
+            <div id="hist-empty" class="empty-msg">No requests yet. Hit an endpoint above to start.</div>
+            <table class="tbl" id="hist-table" style="display:none;">
+                <thead><tr><th>Time</th><th>Endpoint</th><th>Status</th><th>Latency</th></tr></thead>
+                <tbody id="hist-body"></tbody>
+            </table>
+        </div>
 
-        <!-- Footer -->
-        <footer class="footer">
+        <div class="footer">
             Built by <a href="https://github.com/yashbaviskar15" target="_blank">Yash Baviskar</a>
-            &nbsp;·&nbsp;
-            <a href="https://github.com/yashbaviskar15/cicd-pipeline" target="_blank">Source Code</a>
-        </footer>
+            &middot;
+            <a href="https://github.com/yashbaviskar15/cicd-pipeline" target="_blank">Source</a>
+        </div>
     </div>
 
-    <script>
-        // ======== Configuration ========
-        const isLocal = ['localhost','127.0.0.1'].includes(window.location.hostname);
-        const DEFAULT_URL = isLocal ? 'http://localhost:3000' : 'https://cicd-pipeline-backend.vercel.app';
+<script>
+(function () {
+    var isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    var defaultUrl = isLocal ? 'http://localhost:3000' : 'https://cicd-pipeline-backend.vercel.app';
+    var urlInput = document.getElementById('base-url');
+    var envLabel = document.getElementById('env-label');
+    urlInput.value = defaultUrl;
 
-        const baseUrlInput = document.getElementById('base-url');
-        const envTag = document.getElementById('env-tag');
-        baseUrlInput.value = DEFAULT_URL;
-        updateEnvTag();
+    function setEnv() {
+        var v = urlInput.value;
+        if (v.indexOf('localhost') !== -1 || v.indexOf('127.0.0.1') !== -1) {
+            envLabel.textContent = 'LOCAL';
+            envLabel.className = 'env-label local';
+        } else {
+            envLabel.textContent = 'PROD';
+            envLabel.className = 'env-label prod';
+        }
+    }
+    setEnv();
+    urlInput.addEventListener('input', setEnv);
 
-        baseUrlInput.addEventListener('input', updateEnvTag);
+    // History
+    var log = [];
 
-        function updateEnvTag() {
-            const v = baseUrlInput.value;
-            if (v.includes('localhost') || v.includes('127.0.0.1')) {
-                envTag.textContent = 'LOCAL';
-                envTag.className = 'env-tag local';
-            } else {
-                envTag.textContent = 'PROD';
-                envTag.className = 'env-tag prod';
+    function pushLog(ep, status, ms, ok) {
+        log.unshift({ t: new Date(), ep: ep, s: status, ms: ms, ok: ok });
+        if (log.length > 25) log.pop();
+        drawLog();
+    }
+
+    function drawLog() {
+        var tbody = document.getElementById('hist-body');
+        var table = document.getElementById('hist-table');
+        var empty = document.getElementById('hist-empty');
+        if (!log.length) { table.style.display = 'none'; empty.style.display = 'block'; return; }
+        table.style.display = 'table';
+        empty.style.display = 'none';
+        var html = '';
+        for (var i = 0; i < log.length; i++) {
+            var r = log[i];
+            var cls = r.ok ? 'ok' : 'err';
+            html += '<tr>'
+                + '<td class="mono">' + r.t.toLocaleTimeString() + '</td>'
+                + '<td class="mono">' + r.ep + '</td>'
+                + '<td><span class="status-pill ' + cls + '">' + r.s + '</span></td>'
+                + '<td class="mono">' + r.ms + 'ms</td>'
+                + '</tr>';
+        }
+        tbody.innerHTML = html;
+    }
+
+    window.clearHistory = function () {
+        log.length = 0;
+        drawLog();
+    };
+
+    // Metrics
+    function setMetrics(data, ms) {
+        var dot = document.getElementById('m-backend-dot');
+        var txt = document.getElementById('m-backend');
+        var note = document.getElementById('m-backend-note');
+        var lat = document.getElementById('m-latency');
+        var latN = document.getElementById('m-latency-note');
+        var up = document.getElementById('m-uptime');
+
+        if (data) {
+            dot.className = 'indicator green';
+            txt.innerHTML = '<span class="indicator green"></span> Online';
+            note.textContent = 'v' + (data.version || '1.0.0');
+            lat.textContent = ms + 'ms';
+            latN.textContent = ms < 200 ? 'Fast' : ms < 600 ? 'Acceptable' : 'Slow';
+            if (typeof data.uptime === 'number') {
+                var s = data.uptime;
+                if (s < 60) up.textContent = s + 's';
+                else if (s < 3600) up.textContent = Math.floor(s / 60) + 'm ' + (s % 60) + 's';
+                else up.textContent = Math.floor(s / 3600) + 'h ' + Math.floor((s % 3600) / 60) + 'm';
             }
+        } else {
+            dot.className = 'indicator red';
+            txt.innerHTML = '<span class="indicator red"></span> Offline';
+            note.textContent = 'Unreachable';
         }
+    }
 
-        // ======== History ========
-        const history = [];
+    // API call
+    window.callEndpoint = async function (ep) {
+        var base = urlInput.value.replace(/\/+$/, '');
+        var url = base + ep;
+        var btn = document.querySelector('[data-ep="' + ep + '"]');
+        if (btn) btn.classList.add('loading');
 
-        function addHistory(endpoint, status, latency, ok) {
-            history.unshift({ time: new Date(), endpoint, status, latency, ok });
-            if (history.length > 20) history.pop();
-            renderHistory();
+        var panel = document.getElementById('resp-panel');
+        var head = document.getElementById('resp-head');
+        var stat = document.getElementById('resp-status');
+        var info = document.getElementById('resp-info');
+        var body = document.getElementById('resp-body');
+
+        panel.classList.add('show');
+        head.className = 'resp-header';
+        stat.textContent = 'Loading...';
+        info.innerHTML = '';
+        body.textContent = '';
+
+        var t0 = performance.now();
+        try {
+            var res = await fetch(url);
+            var ms = Math.round(performance.now() - t0);
+            var data = await res.json();
+
+            head.className = 'resp-header ' + (res.ok ? 'ok' : 'err');
+            stat.textContent = res.status + ' ' + res.statusText;
+            info.innerHTML = '<span>' + ms + 'ms</span><span>' + ep + '</span>';
+            body.textContent = JSON.stringify(data, null, 2);
+
+            pushLog(ep, res.status, ms, res.ok);
+            if (ep === '/health' || ep === '/') setMetrics(data, ms);
+        } catch (e) {
+            var ms = Math.round(performance.now() - t0);
+            head.className = 'resp-header err';
+            stat.textContent = 'Connection Failed';
+            info.innerHTML = '<span>' + ms + 'ms</span><span>' + ep + '</span>';
+            body.textContent = e.name + ': ' + e.message
+                + '\n\nPossible causes:'
+                + '\n  - Backend is not running at ' + url
+                + '\n  - HTTPS page cannot call HTTP backend (mixed content)'
+                + '\n  - CORS not configured on the server'
+                + '\n  - Network or firewall blocking the request';
+            pushLog(ep, 'ERR', ms, false);
+            setMetrics(null, ms);
+        } finally {
+            if (btn) btn.classList.remove('loading');
         }
+    };
 
-        function renderHistory() {
-            const tbody = document.getElementById('history-body');
-            const table = document.getElementById('history-table');
-            const empty = document.getElementById('history-empty');
+    window.runAll = async function () {
+        await callEndpoint('/');
+        await callEndpoint('/health');
+        await callEndpoint('/api/data');
+    };
 
-            if (history.length === 0) {
-                table.style.display = 'none';
-                empty.style.display = 'block';
-                return;
-            }
-            table.style.display = 'table';
-            empty.style.display = 'none';
-
-            tbody.innerHTML = history.map(h => {
-                const time = h.time.toLocaleTimeString();
-                const cls = h.ok ? 'badge-ok' : 'badge-err';
-                return `<tr>
-                    <td class="mono">${time}</td>
-                    <td class="mono">${h.endpoint}</td>
-                    <td><span class="badge-sm ${cls}">${h.status}</span></td>
-                    <td class="mono">${h.latency}ms</td>
-                </tr>`;
-            }).join('');
-        }
-
-        function clearHistory() {
-            history.length = 0;
-            renderHistory();
-        }
-
-        // ======== Syntax Highlighting ========
-        function highlightJSON(json) {
-            const str = JSON.stringify(json, null, 2);
-            return str.replace(
-                /("(?:\\.|[^"\\])*")\s*:/g,
-                '<span class="json-key">$1</span>:'
-            ).replace(
-                /:\s*("(?:\\.|[^"\\])*")/g,
-                ': <span class="json-str">$1</span>'
-            ).replace(
-                /:\s*(\d+\.?\d*)/g,
-                ': <span class="json-num">$1</span>'
-            ).replace(
-                /:\s*(true|false)/g,
-                ': <span class="json-bool">$1</span>'
-            ).replace(
-                /:\s*(null)/g,
-                ': <span class="json-null">$1</span>'
-            );
-        }
-
-        // ======== Status Cards ========
-        function updateStatusCards(data, latency) {
-            const dot = document.getElementById('backend-dot');
-            const status = document.getElementById('backend-status');
-            const version = document.getElementById('backend-version');
-            const latVal = document.getElementById('latency-value');
-            const latSub = document.getElementById('latency-sub');
-            const upVal = document.getElementById('uptime-value');
-            const upSub = document.getElementById('uptime-sub');
-
-            if (data) {
-                dot.className = 'dot green pulse';
-                status.innerHTML = '<span class="dot green pulse"></span>Online';
-                version.textContent = 'v' + (data.version || '1.0.0');
-
-                latVal.textContent = latency + 'ms';
-                latSub.textContent = latency < 200 ? 'Excellent' : latency < 500 ? 'Good' : 'Slow';
-
-                if (data.uptime !== undefined) {
-                    const s = data.uptime;
-                    if (s < 60) { upVal.textContent = s + 's'; }
-                    else if (s < 3600) { upVal.textContent = Math.floor(s/60) + 'm'; }
-                    else { upVal.textContent = Math.floor(s/3600) + 'h'; }
-                    upSub.textContent = 'Server uptime';
-                }
-            } else {
-                dot.className = 'dot red';
-                status.innerHTML = '<span class="dot red"></span>Offline';
-                version.textContent = 'Unreachable';
-            }
-        }
-
-        // ======== API Calls ========
-        async function callEndpoint(endpoint) {
-            const base = baseUrlInput.value.replace(/\/+$/, '');
-            const url = base + endpoint;
-
-            // Set button loading
-            const btn = document.querySelector(`[data-ep="${endpoint}"]`);
-            if (btn) btn.classList.add('loading');
-
-            const panel = document.getElementById('response-panel');
-            const bar = document.getElementById('resp-bar');
-            const statusEl = document.getElementById('resp-status');
-            const metaEl = document.getElementById('resp-meta');
-            const jsonEl = document.getElementById('resp-json');
-
-            panel.classList.add('visible');
-            bar.className = 'resp-bar';
-            statusEl.textContent = 'Loading...';
-            metaEl.innerHTML = '';
-            jsonEl.innerHTML = '<span class="json-null">Fetching...</span>';
-
-            const t0 = performance.now();
-
-            try {
-                const res = await fetch(url);
-                const ms = Math.round(performance.now() - t0);
-                const data = await res.json();
-
-                bar.className = res.ok ? 'resp-bar ok' : 'resp-bar fail';
-                statusEl.innerHTML = `<span class="dot ${res.ok ? 'green' : 'red'}"></span> ${res.status} ${res.statusText}`;
-                metaEl.innerHTML = `
-                    <span>⏱ ${ms}ms</span>
-                    <span>📍 ${endpoint}</span>
-                    <span>🔗 ${url}</span>
-                `;
-                jsonEl.innerHTML = highlightJSON(data);
-
-                addHistory(endpoint, res.status, ms, res.ok);
-
-                // Update top-level status cards from /health or / responses
-                if (endpoint === '/health' || endpoint === '/') {
-                    updateStatusCards(data, ms);
-                }
-            } catch (err) {
-                const ms = Math.round(performance.now() - t0);
-                bar.className = 'resp-bar fail';
-                statusEl.innerHTML = '<span class="dot red"></span> Connection Failed';
-                metaEl.innerHTML = `<span>⏱ ${ms}ms</span> <span>📍 ${endpoint}</span>`;
-                jsonEl.textContent =
-                    `${err.name}: ${err.message}\n\n` +
-                    `Possible causes:\n` +
-                    `  • Backend is not running at ${url}\n` +
-                    `  • Mixed content: HTTPS page cannot call HTTP backend\n` +
-                    `  • CORS is not configured on the backend\n` +
-                    `  • Network or firewall blocking the request`;
-
-                addHistory(endpoint, 'ERR', ms, false);
-                updateStatusCards(null, ms);
-            } finally {
-                if (btn) btn.classList.remove('loading');
-            }
-        }
-
-        async function runAll() {
-            await callEndpoint('/');
-            await callEndpoint('/health');
-            await callEndpoint('/api/data');
-        }
-
-        // ======== Auto-check on load ========
-        window.addEventListener('DOMContentLoaded', () => {
-            callEndpoint('/health');
-        });
-    </script>
+    // Check health on load
+    callEndpoint('/health');
+})();
+</script>
 </body>
 </html>
