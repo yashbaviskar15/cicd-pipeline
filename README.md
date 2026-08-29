@@ -17,6 +17,8 @@ A production-style CI/CD pipeline and cloud infrastructure demonstration. This p
 - Backend Service: [cicd-pipeline-backend.vercel.app](https://cicd-pipeline-backend.vercel.app/)
 - Repository: [github.com/yashbaviskar15/cicd-pipeline](https://github.com/yashbaviskar15/cicd-pipeline)
 
+![CI/CD Pipeline Dashboard](docs/screenshots/dashboard.png)
+
 ---
 
 ## Table of Contents
