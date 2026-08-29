@@ -6,6 +6,18 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+app.get('/', (req, res) => {
+  res.json({
+    service: 'cicd-backend',
+    status: 'healthy',
+    version: process.env.VERSION || '1.0.0',
+    endpoints: {
+      health: '/health',
+      data: '/api/data'
+    }
+  });
+});
+
 app.get('/health', (req, res) => {
   res.json({
     status: 'healthy',

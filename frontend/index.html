@@ -5,55 +5,216 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CI/CD Demo Frontend</title>
     <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --success: #16a34a;
+            --error: #dc2626;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+        }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
         body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            text-align: center;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
         }
         .container {
-            margin-top: 50px;
+            width: 100%;
+            max-width: 760px;
+        }
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 24px;
+            text-align: center;
+            color: var(--text);
         }
         .card {
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 20px 0;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .card h2 {
+            font-size: 1.25rem;
+            margin-bottom: 12px;
+            color: var(--text);
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            background-color: #dcfce7;
+            color: #15803d;
+        }
+        .url-control {
+            margin: 16px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            text-align: left;
+        }
+        .url-control label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+        .url-control input {
+            padding: 10px 14px;
+            font-size: 0.95rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            width: 100%;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .url-control input:focus {
+            border-color: var(--primary);
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 16px;
         }
         button {
             padding: 10px 20px;
-            font-size: 16px;
+            font-size: 0.95rem;
+            font-weight: 500;
             cursor: pointer;
-            background: #007bff;
+            background: var(--primary);
             color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background: var(--primary-hover);
+        }
+        button.secondary {
+            background: #e2e8f0;
+            color: #334155;
+        }
+        button.secondary:hover {
+            background: #cbd5e1;
+        }
+        .result-box {
+            margin-top: 20px;
+            text-align: left;
+            border-radius: 8px;
+            overflow: hidden;
+            display: none;
+        }
+        .result-header {
+            padding: 10px 16px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .result-box.success .result-header {
+            background: #dcfce7;
+            color: #15803d;
+        }
+        .result-box.error .result-header {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+        pre {
+            background: #1e293b;
+            color: #f8fafc;
+            padding: 16px;
+            overflow-x: auto;
+            font-size: 0.875rem;
+            line-height: 1.5;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>CI/CD Pipeline Demo</h1>
+        
         <div class="card">
             <h2>Frontend Status</h2>
-            <p>Version: 1.0.0</p>
+            <p style="margin-bottom: 8px;">Version: <strong>1.0.0</strong></p>
+            <span class="status-badge">Online</span>
         </div>
+
         <div class="card">
             <h2>Backend Connection</h2>
-            <button onclick="checkBackend()">Check Backend</button>
-            <div id="backend-result"></div>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">
+                Test connection to the backend service. Backend URL is automatically resolved based on environment.
+            </p>
+
+            <div class="url-control">
+                <label for="backend-url-input">Target Backend Base URL:</label>
+                <input type="text" id="backend-url-input" />
+            </div>
+
+            <div class="button-group">
+                <button onclick="callBackend('/api/data')">Check /api/data</button>
+                <button onclick="callBackend('/health')" class="secondary">Check /health</button>
+                <button onclick="callBackend('/')" class="secondary">Check / (Root)</button>
+            </div>
+
+            <div id="result-box" class="result-box">
+                <div id="result-header" class="result-header"></div>
+                <pre><code id="result-content"></code></pre>
+            </div>
         </div>
     </div>
+
     <script>
-        async function checkBackend() {
-            const resultDiv = document.getElementById('backend-result');
+        // Automatically determine backend URL
+        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const defaultBackend = isLocal ? 'http://localhost:3000' : 'https://cicd-pipeline-backend.vercel.app';
+        
+        const backendInput = document.getElementById('backend-url-input');
+        backendInput.value = defaultBackend;
+
+        async function callBackend(endpoint) {
+            const baseUrl = backendInput.value.replace(/\/+$/, '');
+            const targetUrl = `${baseUrl}${endpoint}`;
+            const resultBox = document.getElementById('result-box');
+            const resultHeader = document.getElementById('result-header');
+            const resultContent = document.getElementById('result-content');
+
+            resultBox.style.display = 'block';
+            resultBox.className = 'result-box';
+            resultHeader.textContent = `Fetching ${endpoint}...`;
+            resultContent.textContent = 'Loading...';
+
+            const startTime = performance.now();
             try {
-                const response = await fetch('http://localhost:3000/api/data');
+                const response = await fetch(targetUrl);
+                const duration = Math.round(performance.now() - startTime);
                 const data = await response.json();
-                resultDiv.innerHTML = `<p style="color: green;">Success: ${JSON.stringify(data)}</p>`;
+
+                resultBox.className = response.ok ? 'result-box success' : 'result-box error';
+                resultHeader.innerHTML = `<span>Status: ${response.status} ${response.statusText} (${duration}ms)</span> <span>${targetUrl}</span>`;
+                resultContent.textContent = JSON.stringify(data, null, 2);
             } catch (error) {
-                resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+                const duration = Math.round(performance.now() - startTime);
+                resultBox.className = 'result-box error';
+                resultHeader.innerHTML = `<span>Error (${duration}ms)</span> <span>${targetUrl}</span>`;
+                resultContent.textContent = `${error.name}: ${error.message}\n\nTroubleshooting tips:\n- If accessing from HTTPS (Vercel), ensure backend URL uses HTTPS.\n- Verify backend service is deployed and running at the specified URL.`;
             }
         }
     </script>

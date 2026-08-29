@@ -12,6 +12,7 @@ jobs:
   deploy-to-ecr:
     name: Build and Push to ECR
     runs-on: ubuntu-latest
+    if: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN != '' && secrets.AWS_REGION != '' }}
     strategy:
       matrix:
         service: [backend, frontend]

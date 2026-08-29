@@ -166,12 +166,11 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ---
 
-## Author
+## 👨‍💻 Author
 
 **Yash Baviskar**
-
 - GitHub: [@yashbaviskar15](https://github.com/yashbaviskar15)
-- LinkedIn: [yashbaviskar15](https://www.linkedin.com/in/yashbaviskar15)
+- LinkedIn: [Yash Baviskar](https://www.linkedin.com/in/yashbaviskar15)
 
 ---
 
