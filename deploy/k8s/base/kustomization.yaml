@@ -1,0 +1,27 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: cicd-pipeline
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: cicd-pipeline
+      app.kubernetes.io/managed-by: kustomize
+    includeSelectors: false
+
+resources:
+  - namespace.yaml
+  - backend-configmap.yaml
+  - backend-secret.yaml
+  - backend-deployment.yaml
+  - backend-service.yaml
+  - frontend-deployment.yaml
+  - hpa.yaml
+  - pdb.yaml
+  - ingress.yaml
+
+images:
+  - name: ghcr.io/yashbaviskar15/cicd-pipeline-backend
+    newTag: latest
+  - name: ghcr.io/yashbaviskar15/cicd-pipeline-frontend
+    newTag: latest

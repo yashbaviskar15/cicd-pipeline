@@ -1,0 +1,135 @@
+# Default values for the backend chart.
+# Override per environment with values-dev.yaml / values-prod.yaml.
+
+replicaCount: 2
+
+image:
+  repository: ghcr.io/yashbaviskar15/cicd-pipeline-backend
+  pullPolicy: IfNotPresent
+  # Defaults to the chart appVersion when empty.
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  capabilities:
+    drop:
+      - ALL
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 3000
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+  hosts:
+    - host: api.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+livenessProbe:
+  httpGet:
+    path: /health/live
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 15
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /health/ready
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+startupProbe:
+  httpGet:
+    path: /health/live
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  failureThreshold: 12
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Non-sensitive configuration rendered into a ConfigMap.
+config:
+  NODE_ENV: production
+  PORT: "3000"
+  LOG_LEVEL: info
+  CORS_ORIGIN: "*"
+  RUN_MIGRATIONS: "true"
+  TRUST_PROXY: "true"
+  OTEL_ENABLED: "false"
+  OTEL_SERVICE_NAME: cicd-pipeline-backend
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+
+# Secret handling.
+# Either point at a pre-existing Secret (existingSecret) or provide values here
+# (in which case the chart renders a Secret). Never commit real values.
+existingSecret: ""
+secrets:
+  DATABASE_URL: ""
+  JWT_SECRET: ""
+  JWT_REFRESH_SECRET: ""
+
+# Prometheus Operator ServiceMonitor (requires the CRD to be installed).
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  scrapeTimeout: 10s
+  path: /metrics
+  additionalLabels: {}
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+topologySpreadConstraints: []

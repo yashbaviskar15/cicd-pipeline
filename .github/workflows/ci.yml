@@ -39,6 +39,10 @@ jobs:
     name: Security scans
     uses: ./.github/workflows/reusable-security.yml
 
+  kubernetes:
+    name: Kubernetes validate
+    uses: ./.github/workflows/reusable-k8s-validate.yml
+
   terraform:
     name: Terraform (${{ matrix.environment }})
     strategy:

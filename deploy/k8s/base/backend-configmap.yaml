@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  labels:
+    app: backend
+    app.kubernetes.io/component: api
+data:
+  NODE_ENV: production
+  PORT: "3000"
+  LOG_LEVEL: info
+  CORS_ORIGIN: "*"
+  RUN_MIGRATIONS: "true"
+  TRUST_PROXY: "true"
+  OTEL_ENABLED: "false"
+  OTEL_SERVICE_NAME: cicd-pipeline-backend
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.observability:4318

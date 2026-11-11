@@ -1,0 +1,58 @@
+name: Reusable · Kubernetes Validate
+
+# Lints the Helm chart and renders the Kustomize overlays so broken manifests
+# fail fast in CI.
+
+on:
+  workflow_call:
+    inputs:
+      helm-version:
+        description: Helm CLI version
+        required: false
+        type: string
+        default: "v3.15.4"
+      kustomize-version:
+        description: Kustomize CLI version
+        required: false
+        type: string
+        default: "5.5.0"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: helm lint + kustomize build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: ${{ inputs.helm-version }}
+
+      - name: Install kustomize
+        run: |
+          curl -sSfL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv${{ inputs.kustomize-version }}/kustomize_v${{ inputs.kustomize-version }}_linux_amd64.tar.gz" \
+            | tar -xz -C /usr/local/bin kustomize
+
+      - name: helm lint
+        run: |
+          helm lint deploy/helm/backend
+          helm lint deploy/helm/backend -f deploy/helm/backend/values-dev.yaml
+          helm lint deploy/helm/backend -f deploy/helm/backend/values-prod.yaml
+
+      - name: helm template (dev + prod)
+        run: |
+          helm template app deploy/helm/backend -f deploy/helm/backend/values-dev.yaml > /tmp/helm-dev.yaml
+          helm template app deploy/helm/backend -f deploy/helm/backend/values-prod.yaml > /tmp/helm-prod.yaml
+          echo "Rendered $(grep -c '^kind:' /tmp/helm-prod.yaml) objects for prod"
+
+      - name: kustomize build
+        run: |
+          kustomize build deploy/k8s/base > /tmp/kustomize-base.yaml
+          kustomize build deploy/k8s/overlays/dev > /tmp/kustomize-dev.yaml
+          kustomize build deploy/k8s/overlays/prod > /tmp/kustomize-prod.yaml
+          echo "Rendered manifests:"
+          wc -l /tmp/kustomize-*.yaml

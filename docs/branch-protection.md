@@ -30,6 +30,7 @@ Add these context names (they appear once the workflows have run at least once):
 - `Security scans / Checkov + tfsec (IaC)`
 - `Security scans / Trivy fs (deps & misconfig)`
 - `CodeQL (SAST) / Analyze (javascript-typescript)`
+- `Kubernetes validate / helm lint + kustomize build`
 - `Terraform (dev) / Plan (dev)`
 - `Terraform (staging) / Plan (staging)`
 - `Terraform (prod) / Plan (prod)`

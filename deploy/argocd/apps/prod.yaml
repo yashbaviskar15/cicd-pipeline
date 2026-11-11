@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cicd-pipeline-prod
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: cicd-pipeline
+    environment: prod
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/yashbaviskar15/cicd-pipeline.git
+    targetRevision: main
+    path: deploy/k8s/overlays/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cicd-pipeline
+  # Production is intentionally NOT auto-synced: a human reviews the diff and
+  # clicks Sync (or the pipeline opens a PR that updates the image tag).
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+    retry:
+      limit: 3
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m

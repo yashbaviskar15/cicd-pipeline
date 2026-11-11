@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cicd-pipeline
+  labels:
+    app.kubernetes.io/part-of: cicd-pipeline
+    # baseline (not restricted) because the nginx-based frontend image starts
+    # its master process as root; the backend still runs as non-root.
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
