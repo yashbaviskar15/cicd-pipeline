@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CI/CD Pipeline Dashboard</title>
+    <title>DevSecOps Platform Dashboard</title>
     <style>
         :root {
             --white: #ffffff;
@@ -67,6 +67,7 @@
         .nav-links {
             display: flex;
             gap: 20px;
+            align-items: center;
         }
         .nav-links a {
             font-size: 0.82rem;
@@ -80,7 +81,7 @@
 
         /* -- Main -- */
         .main {
-            max-width: 800px;
+            max-width: 860px;
             margin: 0 auto;
             padding: 32px 20px 60px;
         }
@@ -157,6 +158,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 10px;
         }
         .card-head-title {
             font-size: 0.85rem;
@@ -167,16 +169,14 @@
             padding: 20px;
         }
 
-        /* -- URL bar -- */
-        .url-bar {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 18px;
+        /* -- Forms -- */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
         }
-        .url-field {
-            flex: 1;
-        }
-        .url-field label {
+        .field { margin-bottom: 12px; }
+        .field label {
             display: block;
             font-size: 0.72rem;
             font-weight: 600;
@@ -185,11 +185,11 @@
             text-transform: uppercase;
             letter-spacing: 0.03em;
         }
-        .url-field input {
+        .field input, .field select, .field textarea {
             width: 100%;
             padding: 8px 12px;
             font-size: 0.82rem;
-            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            font-family: inherit;
             border: 1px solid var(--gray-200);
             border-radius: 6px;
             background: var(--gray-50);
@@ -197,10 +197,18 @@
             outline: none;
             transition: border-color 0.15s;
         }
-        .url-field input:focus {
+        .field textarea { resize: vertical; min-height: 60px; }
+        .field input:focus, .field select:focus, .field textarea:focus {
             border-color: var(--blue-500);
             box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
         }
+
+        .url-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+        .url-field { flex: 1; }
 
         .env-label {
             display: inline-block;
@@ -236,6 +244,7 @@
             align-items: center;
             gap: 6px;
             transition: all 0.12s;
+            text-decoration: none;
         }
         .btn:hover {
             border-color: var(--gray-300);
@@ -253,6 +262,9 @@
             background: var(--gray-700);
             border-color: var(--gray-700);
         }
+        .btn-sm { font-size: 0.7rem; padding: 4px 9px; }
+        .btn-danger { color: var(--red-700); border-color: #fecaca; }
+        .btn-danger:hover { background: var(--red-50); border-color: #fca5a5; }
 
         .method-tag {
             font-size: 0.62rem;
@@ -266,6 +278,39 @@
         .path-tag {
             font-family: 'SFMono-Regular', Consolas, monospace;
             font-size: 0.78rem;
+        }
+
+        /* -- Alerts -- */
+        .alert {
+            padding: 9px 14px;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            margin-bottom: 14px;
+            display: none;
+        }
+        .alert.show { display: block; }
+        .alert.ok { background: var(--green-50); color: var(--green-700); border: 1px solid #d1fae5; }
+        .alert.err { background: var(--red-50); color: var(--red-700); border: 1px solid #fecaca; }
+        .alert.info { background: var(--blue-50); color: var(--blue-600); border: 1px solid #bfdbfe; }
+
+        .user-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.78rem;
+            color: var(--gray-600);
+        }
+        .user-avatar {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: var(--gray-900);
+            color: var(--white);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 700;
         }
 
         /* -- Response -- */
@@ -339,6 +384,7 @@
             padding: 9px 20px;
             border-bottom: 1px solid var(--gray-100);
             color: var(--gray-600);
+            vertical-align: middle;
         }
         .tbl tr:last-child td { border-bottom: none; }
         .tbl tr:hover td { background: var(--gray-50); }
@@ -357,6 +403,12 @@
         }
         .status-pill.ok { background: var(--green-50); color: var(--green-700); }
         .status-pill.err { background: var(--red-50); color: var(--red-700); }
+        .status-pill.todo { background: var(--gray-100); color: var(--gray-700); }
+        .status-pill.in_progress { background: var(--blue-50); color: var(--blue-600); }
+        .status-pill.done { background: var(--green-50); color: var(--green-700); }
+        .status-pill.high { background: var(--red-50); color: var(--red-700); }
+        .status-pill.medium { background: var(--amber-50); color: #b45309; }
+        .status-pill.low { background: var(--gray-100); color: var(--gray-600); }
 
         .empty-msg {
             padding: 28px 20px;
@@ -364,6 +416,15 @@
             color: var(--gray-400);
             font-size: 0.82rem;
         }
+
+        .bar {
+            height: 6px;
+            border-radius: 3px;
+            background: var(--gray-100);
+            overflow: hidden;
+            margin-top: 4px;
+        }
+        .bar > span { display: block; height: 100%; background: var(--green-500); }
 
         /* -- Footer -- */
         .footer {
@@ -381,11 +442,14 @@
             text-decoration: underline;
         }
 
+        .hidden { display: none !important; }
+
         /* -- Responsive -- */
         @media (max-width: 700px) {
             .metrics { grid-template-columns: repeat(2, 1fr); }
             .nav-links { display: none; }
             .main { padding: 20px 16px 48px; }
+            .grid-2 { grid-template-columns: 1fr; }
         }
         @media (max-width: 420px) {
             .metrics { grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -404,17 +468,17 @@
 <body>
 
     <nav class="nav">
-        <a href="/" class="nav-brand">cicd-pipeline</a>
+        <a href="/" class="nav-brand">devsecops-platform</a>
         <div class="nav-links">
             <a href="https://github.com/yashbaviskar15/cicd-pipeline" target="_blank">GitHub</a>
-            <a href="https://cicd-pipeline-backend.vercel.app/health" target="_blank">API</a>
+            <a id="nav-docs" href="#" target="_blank">API Docs</a>
         </div>
     </nav>
 
     <div class="main">
 
         <h1 class="page-title">Dashboard</h1>
-        <p class="page-sub">Service health and API testing for the CI/CD pipeline project.</p>
+        <p class="page-sub">Live health, metrics and Task API demo for the DevSecOps platform.</p>
 
         <!-- Metrics -->
         <div class="metrics">
@@ -429,26 +493,26 @@
                 <div class="metric-note" id="m-backend-note">--</div>
             </div>
             <div class="metric">
-                <div class="metric-label">Latency</div>
+                <div class="metric-label">Latency (health)</div>
                 <div class="metric-val" id="m-latency">--</div>
                 <div class="metric-note" id="m-latency-note">Not measured</div>
             </div>
             <div class="metric">
-                <div class="metric-label">Uptime</div>
-                <div class="metric-val" id="m-uptime">--</div>
-                <div class="metric-note">Server process</div>
+                <div class="metric-label">Requests served</div>
+                <div class="metric-val" id="m-reqs">--</div>
+                <div class="metric-note" id="m-uptime">Uptime --</div>
             </div>
         </div>
 
-        <!-- API Explorer -->
+        <!-- Backend URL -->
         <div class="card">
             <div class="card-head">
-                <span class="card-head-title">API Explorer</span>
-                <button class="btn btn-primary" onclick="runAll()">Run All</button>
+                <span class="card-head-title">Backend target</span>
+                <button class="btn btn-sm" onclick="refreshAll()">Refresh</button>
             </div>
             <div class="card-content">
                 <div class="url-bar">
-                    <div class="url-field">
+                    <div class="url-field field">
                         <label for="base-url">
                             Backend URL
                             <span class="env-label" id="env-label">--</span>
@@ -456,28 +520,133 @@
                         <input type="text" id="base-url" placeholder="https://..." />
                     </div>
                 </div>
-
                 <div class="btn-row">
-                    <button class="btn" onclick="callEndpoint('/')" data-ep="/">
-                        <span class="method-tag">GET</span>
-                        <span class="path-tag">/</span>
-                    </button>
                     <button class="btn" onclick="callEndpoint('/health')" data-ep="/health">
-                        <span class="method-tag">GET</span>
-                        <span class="path-tag">/health</span>
+                        <span class="method-tag">GET</span><span class="path-tag">/health</span>
                     </button>
-                    <button class="btn" onclick="callEndpoint('/api/data')" data-ep="/api/data">
-                        <span class="method-tag">GET</span>
-                        <span class="path-tag">/api/data</span>
+                    <button class="btn" onclick="callEndpoint('/health/ready')" data-ep="/health/ready">
+                        <span class="method-tag">GET</span><span class="path-tag">/health/ready</span>
                     </button>
+                    <button class="btn" onclick="callEndpoint('/metrics')" data-ep="/metrics">
+                        <span class="method-tag">GET</span><span class="path-tag">/metrics</span>
+                    </button>
+                    <a class="btn" id="docs-link" href="#" target="_blank">
+                        <span class="method-tag">GET</span><span class="path-tag">/docs</span>
+                    </a>
                 </div>
+            </div>
+        </div>
 
-                <div class="response" id="resp-panel">
+        <!-- Auth -->
+        <div class="card">
+            <div class="card-head">
+                <span class="card-head-title">Authentication</span>
+                <div id="auth-who" class="user-chip hidden">
+                    <span class="user-avatar" id="auth-initial">?</span>
+                    <span id="auth-email"></span>
+                    <button class="btn btn-sm" onclick="logout()">Log out</button>
+                </div>
+            </div>
+            <div class="card-content">
+                <div id="auth-alert" class="alert"></div>
+                <div id="auth-forms">
+                    <div class="grid-2">
+                        <div class="field">
+                            <label for="auth-email-input">Email</label>
+                            <input type="email" id="auth-email-input" placeholder="demo@example.com" autocomplete="username" />
+                        </div>
+                        <div class="field">
+                            <label for="auth-password">Password</label>
+                            <input type="password" id="auth-password" placeholder="demo12345" autocomplete="current-password" />
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label for="auth-name">Name (register only)</label>
+                        <input type="text" id="auth-name" placeholder="Jane Doe" autocomplete="name" />
+                    </div>
+                    <div class="btn-row">
+                        <button class="btn btn-primary" onclick="login()">Log in</button>
+                        <button class="btn" onclick="register()">Register</button>
+                    </div>
+                    <p class="metric-note" style="margin-top:10px;">Seed demo account: demo@example.com / demo12345</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tasks -->
+        <div class="card" id="tasks-card">
+            <div class="card-head">
+                <span class="card-head-title">My Tasks</span>
+                <button class="btn btn-sm" onclick="loadTasks()">Reload</button>
+            </div>
+            <div class="card-content">
+                <div id="tasks-alert" class="alert info show">Log in to load tasks.</div>
+
+                <form id="task-form" class="hidden" onsubmit="createTask(event)">
+                    <div class="grid-2">
+                        <div class="field">
+                            <label for="task-title">Title</label>
+                            <input type="text" id="task-title" placeholder="Ship the pipeline" required />
+                        </div>
+                        <div class="field">
+                            <label for="task-due">Due date</label>
+                            <input type="date" id="task-due" />
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label for="task-desc">Description</label>
+                        <textarea id="task-desc" placeholder="Optional details..."></textarea>
+                    </div>
+                    <div class="grid-2">
+                        <div class="field">
+                            <label for="task-status">Status</label>
+                            <select id="task-status">
+                                <option value="todo">todo</option>
+                                <option value="in_progress">in_progress</option>
+                                <option value="done">done</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label for="task-priority">Priority</label>
+                            <select id="task-priority">
+                                <option value="low">low</option>
+                                <option value="medium" selected>medium</option>
+                                <option value="high">high</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="btn-row">
+                        <button class="btn btn-primary" type="submit">Add task</button>
+                    </div>
+                </form>
+
+                <div id="tasks-empty" class="empty-msg hidden">No tasks yet. Create one above.</div>
+                <table class="tbl hidden" id="tasks-table">
+                    <thead><tr><th>Title</th><th>Status</th><th>Priority</th><th>Due</th><th></th></tr></thead>
+                    <tbody id="tasks-body"></tbody>
+                </table>
+
+                <div id="tasks-stats" class="hidden" style="margin-top:16px;">
+                    <div class="metric-label">Completion</div>
+                    <div class="bar"><span id="stats-bar" style="width:0%"></span></div>
+                    <div class="metric-note" id="stats-note"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- API response -->
+        <div class="card">
+            <div class="card-head">
+                <span class="card-head-title">API response</span>
+                <button class="btn btn-sm" onclick="clearResponse()">Clear</button>
+            </div>
+            <div class="card-content">
+                <div class="response show" id="resp-panel" style="margin-top:0;">
                     <div class="resp-header" id="resp-head">
-                        <span id="resp-status"></span>
+                        <span id="resp-status">Idle</span>
                         <div class="resp-info" id="resp-info"></div>
                     </div>
-                    <div class="resp-code" id="resp-body"></div>
+                    <div class="resp-code" id="resp-body">No request made yet.</div>
                 </div>
             </div>
         </div>
@@ -486,10 +655,10 @@
         <div class="card">
             <div class="card-head">
                 <span class="card-head-title">Request History</span>
-                <button class="btn" onclick="clearHistory()" style="font-size:0.72rem;padding:5px 10px;">Clear</button>
+                <button class="btn btn-sm" onclick="clearHistory()">Clear</button>
             </div>
             <div id="hist-empty" class="empty-msg">No requests yet. Hit an endpoint above to start.</div>
-            <table class="tbl" id="hist-table" style="display:none;">
+            <table class="tbl hidden" id="hist-table">
                 <thead><tr><th>Time</th><th>Endpoint</th><th>Status</th><th>Latency</th></tr></thead>
                 <tbody id="hist-body"></tbody>
             </table>
@@ -504,146 +673,361 @@
 
 <script>
 (function () {
+    'use strict';
+
     var isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
     var defaultUrl = isLocal ? 'http://localhost:3000' : 'https://cicd-pipeline-backend.vercel.app';
     var urlInput = document.getElementById('base-url');
     var envLabel = document.getElementById('env-label');
     urlInput.value = defaultUrl;
 
+    var TOKEN_KEY = 'devsecops.token';
+    var USER_KEY = 'devsecops.user';
+    var token = localStorage.getItem(TOKEN_KEY) || null;
+    var user = null;
+    try { user = JSON.parse(localStorage.getItem(USER_KEY) || 'null'); } catch (e) { user = null; }
+
+    function base() { return urlInput.value.replace(/\/+$/, ''); }
+
     function setEnv() {
         var v = urlInput.value;
-        if (v.indexOf('localhost') !== -1 || v.indexOf('127.0.0.1') !== -1) {
-            envLabel.textContent = 'LOCAL';
-            envLabel.className = 'env-label local';
-        } else {
-            envLabel.textContent = 'PROD';
-            envLabel.className = 'env-label prod';
-        }
+        var local = v.indexOf('localhost') !== -1 || v.indexOf('127.0.0.1') !== -1;
+        envLabel.textContent = local ? 'LOCAL' : 'PROD';
+        envLabel.className = 'env-label ' + (local ? 'local' : 'prod');
+        document.getElementById('docs-link').href = base() + '/docs';
+        document.getElementById('nav-docs').href = base() + '/docs';
     }
-    setEnv();
-    urlInput.addEventListener('input', setEnv);
 
-    // History
+    // ---------- History ----------
     var log = [];
-
     function pushLog(ep, status, ms, ok) {
         log.unshift({ t: new Date(), ep: ep, s: status, ms: ms, ok: ok });
         if (log.length > 25) log.pop();
         drawLog();
     }
-
     function drawLog() {
         var tbody = document.getElementById('hist-body');
         var table = document.getElementById('hist-table');
         var empty = document.getElementById('hist-empty');
-        if (!log.length) { table.style.display = 'none'; empty.style.display = 'block'; return; }
-        table.style.display = 'table';
-        empty.style.display = 'none';
+        if (!log.length) { table.classList.add('hidden'); empty.classList.remove('hidden'); return; }
+        table.classList.remove('hidden');
+        empty.classList.add('hidden');
         var html = '';
         for (var i = 0; i < log.length; i++) {
             var r = log[i];
-            var cls = r.ok ? 'ok' : 'err';
             html += '<tr>'
                 + '<td class="mono">' + r.t.toLocaleTimeString() + '</td>'
-                + '<td class="mono">' + r.ep + '</td>'
-                + '<td><span class="status-pill ' + cls + '">' + r.s + '</span></td>'
+                + '<td class="mono">' + escapeHtml(r.ep) + '</td>'
+                + '<td><span class="status-pill ' + (r.ok ? 'ok' : 'err') + '">' + r.s + '</span></td>'
                 + '<td class="mono">' + r.ms + 'ms</td>'
                 + '</tr>';
         }
         tbody.innerHTML = html;
     }
 
-    window.clearHistory = function () {
-        log.length = 0;
-        drawLog();
-    };
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
 
-    // Metrics
-    function setMetrics(data, ms) {
+    function showResponse(label, status, ms, ok, data) {
+        var head = document.getElementById('resp-head');
+        document.getElementById('resp-status').textContent = status;
+        document.getElementById('resp-info').innerHTML = '<span>' + ms + 'ms</span><span>' + escapeHtml(label) + '</span>';
+        head.className = 'resp-header ' + (ok ? 'ok' : 'err');
+        document.getElementById('resp-body').textContent =
+            typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    }
+
+    // ---------- Fetch wrapper ----------
+    async function api(method, path, body, opts) {
+        opts = opts || {};
+        var headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+        var t0 = performance.now();
+        var res, data, ms;
+        try {
+            res = await fetch(base() + path, {
+                method: method,
+                headers: headers,
+                body: body ? JSON.stringify(body) : undefined
+            });
+            ms = Math.round(performance.now() - t0);
+            var text = await res.text();
+            try { data = text ? JSON.parse(text) : null; } catch (e) { data = text; }
+        } catch (e) {
+            ms = Math.round(performance.now() - t0);
+            showResponse(method + ' ' + path, 'Connection Failed', ms, false,
+                e.name + ': ' + e.message + '\n\nCheck the backend URL, CORS and that the service is running.');
+            pushLog(method + ' ' + path, 'ERR', ms, false);
+            throw e;
+        }
+        if (!opts.silent) {
+            showResponse(method + ' ' + path, res.status + ' ' + res.statusText, ms, res.ok, data);
+        }
+        pushLog(method + ' ' + path, res.status, ms, res.ok);
+        if (res.status === 401 && opts.auth !== false && token) { logout(); }
+        return { res: res, data: data };
+    }
+
+    // ---------- Health & metrics ----------
+    function setMetrics(health, ms) {
         var dot = document.getElementById('m-backend-dot');
         var txt = document.getElementById('m-backend');
-        var note = document.getElementById('m-backend-note');
-        var lat = document.getElementById('m-latency');
-        var latN = document.getElementById('m-latency-note');
-        var up = document.getElementById('m-uptime');
-
-        if (data) {
+        if (health) {
             dot.className = 'indicator green';
             txt.innerHTML = '<span class="indicator green"></span> Online';
-            note.textContent = 'v' + (data.version || '1.0.0');
-            lat.textContent = ms + 'ms';
-            latN.textContent = ms < 200 ? 'Fast' : ms < 600 ? 'Acceptable' : 'Slow';
-            if (typeof data.uptime === 'number') {
-                var s = data.uptime;
-                if (s < 60) up.textContent = s + 's';
-                else if (s < 3600) up.textContent = Math.floor(s / 60) + 'm ' + (s % 60) + 's';
-                else up.textContent = Math.floor(s / 3600) + 'h ' + Math.floor((s % 3600) / 60) + 'm';
+            document.getElementById('m-backend-note').textContent = 'v' + (health.version || '1.0.0');
+            document.getElementById('m-latency').textContent = ms + 'ms';
+            document.getElementById('m-latency-note').textContent =
+                ms < 200 ? 'Fast' : ms < 600 ? 'Acceptable' : 'Slow';
+            if (typeof health.uptime === 'number') {
+                document.getElementById('m-uptime').textContent = 'Uptime ' + fmtUptime(health.uptime);
             }
         } else {
             dot.className = 'indicator red';
             txt.innerHTML = '<span class="indicator red"></span> Offline';
-            note.textContent = 'Unreachable';
+            document.getElementById('m-backend-note').textContent = 'Unreachable';
+        }
+    }
+    function fmtUptime(s) {
+        if (s < 60) return Math.floor(s) + 's';
+        if (s < 3600) return Math.floor(s / 60) + 'm';
+        return Math.floor(s / 3600) + 'h ' + Math.floor((s % 3600) / 60) + 'm';
+    }
+
+    async function refreshHealth() {
+        var t0 = performance.now();
+        try {
+            var r = await api('GET', '/health', null, { silent: true, auth: false });
+            var ms = Math.round(performance.now() - t0);
+            if (r.res.ok) setMetrics(r.data, ms); else setMetrics(null, ms);
+        } catch (e) { setMetrics(null, 0); }
+    }
+
+    async function refreshMetrics() {
+        try {
+            var r = await api('GET', '/metrics', null, { silent: true, auth: false });
+            if (r.res.ok && typeof r.data === 'string') {
+                var m = r.data.match(/^http_requests_total(?:\{[^}]*\})?\s+([\d.]+)/m);
+                if (m) document.getElementById('m-reqs').textContent = Math.round(parseFloat(m[1])).toLocaleString();
+            }
+        } catch (e) { /* offline */ }
+    }
+
+    // ---------- Auth ----------
+    function setAuthAlert(kind, msg) {
+        var el = document.getElementById('auth-alert');
+        el.className = 'alert show ' + kind;
+        el.textContent = msg;
+    }
+    function clearAuthAlert() { document.getElementById('auth-alert').className = 'alert'; }
+
+    function persistAuth(payload) {
+        token = payload.accessToken;
+        user = payload.user;
+        localStorage.setItem(TOKEN_KEY, token);
+        localStorage.setItem(USER_KEY, JSON.stringify(user));
+        renderAuth();
+    }
+    function renderAuth() {
+        var who = document.getElementById('auth-who');
+        var forms = document.getElementById('auth-forms');
+        var form = document.getElementById('task-form');
+        var alertBox = document.getElementById('tasks-alert');
+        if (user) {
+            who.classList.remove('hidden');
+            forms.classList.add('hidden');
+            form.classList.remove('hidden');
+            document.getElementById('auth-email').textContent = user.email;
+            document.getElementById('auth-initial').textContent = (user.email || '?').charAt(0).toUpperCase();
+            document.getElementById('auth-email-input').value = user.email;
+            alertBox.className = 'alert';
+            loadTasks();
+        } else {
+            who.classList.add('hidden');
+            forms.classList.remove('hidden');
+            form.classList.add('hidden');
+            document.getElementById('tasks-table').classList.add('hidden');
+            document.getElementById('tasks-empty').classList.add('hidden');
+            document.getElementById('tasks-stats').classList.add('hidden');
+            alertBox.className = 'alert info show';
+            alertBox.textContent = 'Log in to load tasks.';
         }
     }
 
-    // API call
+    window.login = async function () {
+        clearAuthAlert();
+        var email = document.getElementById('auth-email-input').value.trim();
+        var password = document.getElementById('auth-password').value;
+        if (!email || !password) { setAuthAlert('err', 'Email and password are required.'); return; }
+        try {
+            var r = await api('POST', '/api/auth/login', { email: email, password: password }, { auth: false });
+            if (r.res.ok) { persistAuth(r.data); setAuthAlert('ok', 'Logged in as ' + r.data.user.email); }
+            else { setAuthAlert('err', errMsg(r.data)); }
+        } catch (e) { setAuthAlert('err', 'Network error.'); }
+    };
+
+    window.register = async function () {
+        clearAuthAlert();
+        var email = document.getElementById('auth-email-input').value.trim();
+        var password = document.getElementById('auth-password').value;
+        var name = document.getElementById('auth-name').value.trim();
+        if (!email || !password) { setAuthAlert('err', 'Email and password are required.'); return; }
+        try {
+            var r = await api('POST', '/api/auth/register', { email: email, password: password, name: name || undefined }, { auth: false });
+            if (r.res.ok) { persistAuth(r.data); setAuthAlert('ok', 'Account created for ' + r.data.user.email); }
+            else { setAuthAlert('err', errMsg(r.data)); }
+        } catch (e) { setAuthAlert('err', 'Network error.'); }
+    };
+
+    window.logout = function () {
+        token = null; user = null;
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(USER_KEY);
+        renderAuth();
+        clearAuthAlert();
+    };
+
+    function errMsg(data) {
+        if (data && data.error && data.error.message) return data.error.message;
+        if (data && data.error && data.error.details) return JSON.stringify(data.error.details);
+        return 'Request failed.';
+    }
+
+    // ---------- Tasks ----------
+    function setTasksAlert(kind, msg) {
+        var el = document.getElementById('tasks-alert');
+        el.className = 'alert show ' + kind;
+        el.textContent = msg;
+    }
+
+    window.loadTasks = async function () {
+        if (!token) return;
+        try {
+            var r = await api('GET', '/api/tasks?limit=50', null, { silent: true });
+            if (!r.res.ok) { setTasksAlert('err', errMsg(r.data)); return; }
+            renderTasks(r.data.items || []);
+            loadStats();
+        } catch (e) { /* handled */ }
+    };
+
+    function renderTasks(items) {
+        var table = document.getElementById('tasks-table');
+        var empty = document.getElementById('tasks-empty');
+        var tbody = document.getElementById('tasks-body');
+        var alertBox = document.getElementById('tasks-alert');
+        alertBox.className = 'alert';
+        if (!items.length) {
+            table.classList.add('hidden');
+            empty.classList.remove('hidden');
+            return;
+        }
+        empty.classList.add('hidden');
+        table.classList.remove('hidden');
+        var html = '';
+        for (var i = 0; i < items.length; i++) {
+            var t = items[i];
+            html += '<tr>'
+                + '<td>' + escapeHtml(t.title) + '</td>'
+                + '<td><select class="btn btn-sm" onchange="updateTaskStatus(\'' + t.id + '\', this.value)">'
+                + option('todo', t.status) + option('in_progress', t.status) + option('done', t.status)
+                + '</select></td>'
+                + '<td><span class="status-pill ' + t.priority + '">' + t.priority + '</span></td>'
+                + '<td class="mono">' + (t.dueDate ? new Date(t.dueDate).toLocaleDateString() : '-') + '</td>'
+                + '<td><button class="btn btn-sm btn-danger" onclick="deleteTask(\'' + t.id + '\')">Delete</button></td>'
+                + '</tr>';
+        }
+        tbody.innerHTML = html;
+    }
+    function option(v, cur) {
+        return '<option value="' + v + '"' + (v === cur ? ' selected' : '') + '>' + v + '</option>';
+    }
+
+    async function loadStats() {
+        try {
+            var r = await api('GET', '/api/tasks/stats', null, { silent: true });
+            if (!r.res.ok) return;
+            var d = r.data;
+            var stats = document.getElementById('tasks-stats');
+            stats.classList.remove('hidden');
+            var pct = d.total ? Math.round((d.byStatus.done || 0) / d.total * 100) : 0;
+            document.getElementById('stats-bar').style.width = pct + '%';
+            document.getElementById('stats-note').textContent =
+                d.total + ' tasks \u00b7 ' + pct + '% done \u00b7 todo ' + (d.byStatus.todo || 0) +
+                ', in_progress ' + (d.byStatus.in_progress || 0) + ', done ' + (d.byStatus.done || 0);
+        } catch (e) { /* ignore */ }
+    }
+
+    window.createTask = async function (ev) {
+        ev.preventDefault();
+        if (!token) { setTasksAlert('err', 'Log in first.'); return; }
+        var payload = {
+            title: document.getElementById('task-title').value.trim(),
+            description: document.getElementById('task-desc').value.trim() || undefined,
+            status: document.getElementById('task-status').value,
+            priority: document.getElementById('task-priority').value,
+            dueDate: document.getElementById('task-due').value || undefined
+        };
+        if (!payload.title) { setTasksAlert('err', 'Title is required.'); return; }
+        try {
+            var r = await api('POST', '/api/tasks', payload, { silent: true });
+            if (!r.res.ok) { setTasksAlert('err', errMsg(r.data)); return; }
+            document.getElementById('task-form').reset();
+            setTasksAlert('ok', 'Task created.');
+            loadTasks();
+        } catch (e) { /* handled */ }
+    };
+
+    window.updateTaskStatus = async function (id, status) {
+        try { await api('PATCH', '/api/tasks/' + id, { status: status }, { silent: true }); loadTasks(); }
+        catch (e) { /* handled */ }
+    };
+
+    window.deleteTask = async function (id) {
+        try { await api('DELETE', '/api/tasks/' + id, null, { silent: true }); loadTasks(); }
+        catch (e) { /* handled */ }
+    };
+
+    // ---------- Raw endpoint explorer ----------
     window.callEndpoint = async function (ep) {
-        var base = urlInput.value.replace(/\/+$/, '');
-        var url = base + ep;
         var btn = document.querySelector('[data-ep="' + ep + '"]');
         if (btn) btn.classList.add('loading');
-
-        var panel = document.getElementById('resp-panel');
-        var head = document.getElementById('resp-head');
-        var stat = document.getElementById('resp-status');
-        var info = document.getElementById('resp-info');
-        var body = document.getElementById('resp-body');
-
-        panel.classList.add('show');
-        head.className = 'resp-header';
-        stat.textContent = 'Loading...';
-        info.innerHTML = '';
-        body.textContent = '';
-
-        var t0 = performance.now();
         try {
-            var res = await fetch(url);
-            var ms = Math.round(performance.now() - t0);
-            var data = await res.json();
-
-            head.className = 'resp-header ' + (res.ok ? 'ok' : 'err');
-            stat.textContent = res.status + ' ' + res.statusText;
-            info.innerHTML = '<span>' + ms + 'ms</span><span>' + ep + '</span>';
-            body.textContent = JSON.stringify(data, null, 2);
-
-            pushLog(ep, res.status, ms, res.ok);
-            if (ep === '/health' || ep === '/') setMetrics(data, ms);
-        } catch (e) {
-            var ms = Math.round(performance.now() - t0);
-            head.className = 'resp-header err';
-            stat.textContent = 'Connection Failed';
-            info.innerHTML = '<span>' + ms + 'ms</span><span>' + ep + '</span>';
-            body.textContent = e.name + ': ' + e.message
-                + '\n\nPossible causes:'
-                + '\n  - Backend is not running at ' + url
-                + '\n  - HTTPS page cannot call HTTP backend (mixed content)'
-                + '\n  - CORS not configured on the server'
-                + '\n  - Network or firewall blocking the request';
-            pushLog(ep, 'ERR', ms, false);
-            setMetrics(null, ms);
-        } finally {
-            if (btn) btn.classList.remove('loading');
-        }
+            document.getElementById('resp-body').textContent = 'Loading ' + ep + ' ...';
+            await api('GET', ep, null, { silent: true });
+            var last = log[0];
+            var r = await fetch(base() + ep, { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+            var text = await r.text();
+            var parsed; try { parsed = JSON.parse(text); } catch (e2) { parsed = text; }
+            showResponse('GET ' + ep, r.status + ' ' + r.statusText, last ? last.ms : 0, r.ok, parsed);
+            if (ep === '/health') refreshAll();
+        } catch (e) { /* handled in api */ }
+        finally { if (btn) btn.classList.remove('loading'); }
     };
 
-    window.runAll = async function () {
-        await callEndpoint('/');
-        await callEndpoint('/health');
-        await callEndpoint('/api/data');
+    window.clearResponse = function () {
+        document.getElementById('resp-head').className = 'resp-header';
+        document.getElementById('resp-status').textContent = 'Idle';
+        document.getElementById('resp-info').innerHTML = '';
+        document.getElementById('resp-body').textContent = 'No request made yet.';
     };
+    window.clearHistory = function () { log.length = 0; drawLog(); };
 
-    // Check health on load
-    callEndpoint('/health');
+    window.refreshAll = function () { refreshHealth(); refreshMetrics(); };
+
+    // ---------- Init ----------
+    setEnv();
+    urlInput.addEventListener('input', setEnv);
+    drawLog();
+    renderAuth();
+    refreshAll();
+    if (token) api('GET', '/api/auth/me', null, { silent: true, auth: false })
+        .then(function (r) { if (r.res.ok) { user = r.data.user || r.data; renderAuth(); } })
+        .catch(function () { });
+
+    setInterval(function () { if (!document.hidden) refreshAll(); }, 15000);
 })();
 </script>
 </body>
