@@ -29,3 +29,18 @@ Thumbs.db
 # Build artifacts
 dist/
 build/
+
+# Test / coverage output
+coverage/
+**/coverage/
+coverage-summary.json
+junit.xml
+*.lcov
+
+# Misc tooling
+.syft/
+*.tar
+*.sarif
+infracost*.json
+k6-summary.json
+.trivy/

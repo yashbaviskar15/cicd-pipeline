@@ -1,54 +1,76 @@
-const express = require('express');
-const cors = require('cors');
-const app = express();
-const port = process.env.PORT || 3000;
+'use strict';
 
-// Track server start time for uptime calculation
-const startTime = Date.now();
+// Tracing must be initialised before any instrumented module is imported.
+require('./tracing');
 
-app.use(cors());
-app.use(express.json());
+const http = require('http');
+const config = require('./config');
+const logger = require('./logger');
+const createApp = require('./app');
+const prisma = require('./db/prisma');
 
-// Root endpoint - service overview
-app.get('/', (req, res) => {
-  res.json({
-    service: 'cicd-backend',
-    status: 'healthy',
-    version: process.env.VERSION || '1.0.0',
-    uptime: Math.floor((Date.now() - startTime) / 1000),
-    endpoints: [
-      { method: 'GET', path: '/', description: 'Service overview' },
-      { method: 'GET', path: '/health', description: 'Health check' },
-      { method: 'GET', path: '/api/data', description: 'Sample data' }
-    ]
-  });
-});
+const app = createApp();
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    service: 'backend',
-    uptime: Math.floor((Date.now() - startTime) / 1000),
-    environment: process.env.NODE_ENV || 'development'
-  });
-});
+let server = null;
 
-// Data endpoint
-app.get('/api/data', (req, res) => {
-  res.json({
-    message: 'Hello from the backend service!',
-    version: process.env.VERSION || '1.0.0',
-    timestamp: new Date().toISOString()
-  });
-});
+/**
+ * Graceful shutdown:
+ *  1. stop accepting new connections (server.close)
+ *  2. drain in-flight requests
+ *  3. close the database connection pool
+ *  4. exit
+ * A hard 10s deadline guarantees the container always terminates so ECS/K8s
+ * do not have to SIGKILL us.
+ *
+ * @param {string} signal
+ */
+function shutdown(signal) {
+  logger.info({ signal }, 'Received shutdown signal, draining connections...');
 
-// Only start server if this file is run directly
-if (require.main === module) {
-  app.listen(port, () => {
-    console.log(`Backend service running on port ${port}`);
+  const forceExit = setTimeout(() => {
+    logger.error('Graceful shutdown timed out, forcing exit');
+    process.exit(1);
+  }, 10000);
+  forceExit.unref();
+
+  server.close(async (err) => {
+    if (err) {
+      logger.error({ err }, 'Error while closing HTTP server');
+    }
+    try {
+      await prisma.disconnect();
+      logger.info('Database connection closed');
+    } catch (dbErr) {
+      logger.error({ err: dbErr }, 'Error closing database connection');
+    }
+    clearTimeout(forceExit);
+    logger.info('Shutdown complete');
+    process.exit(err ? 1 : 0);
   });
 }
 
+if (require.main === module) {
+  server = http.createServer(app);
+
+  server.listen(config.port, () => {
+    logger.info(
+      { port: config.port, env: config.env, version: config.serviceVersion },
+      'Backend service started'
+    );
+  });
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
+
+  process.on('unhandledRejection', (reason) => {
+    logger.error({ err: reason }, 'Unhandled promise rejection');
+  });
+
+  process.on('uncaughtException', (err) => {
+    logger.fatal({ err }, 'Uncaught exception, exiting');
+    shutdown('uncaughtException');
+  });
+}
+
+// Exported for tests and for Vercel's serverless handler.
 module.exports = app;

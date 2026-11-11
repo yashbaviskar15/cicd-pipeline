@@ -1,7 +1,16 @@
 node_modules
 npm-debug.log
+npm-debug.log*
 .git
 .gitignore
 .env
+.env.*
+!.env.example
 dist
 coverage
+tests
+*.md
+jest.config.js
+.eslintrc.json
+coverage/
+.github
