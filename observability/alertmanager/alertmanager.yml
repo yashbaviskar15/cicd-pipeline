@@ -1,0 +1,47 @@
+# Alertmanager configuration.
+# The default receiver is intentionally a no-op so the stack works out of the
+# box without credentials. Wire real receivers by uncommenting/adding routes.
+
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: blackhole
+  group_by: ["alertname", "slo", "severity"]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - matchers:
+        - severity = "critical"
+      receiver: critical
+      continue: false
+    - matchers:
+        - severity = "warning"
+      receiver: warning
+      continue: false
+
+receivers:
+  - name: blackhole
+
+  # --- Examples (configure before enabling) ---
+  - name: critical
+    # slack_configs:
+    #   - api_url: "${SLACK_WEBHOOK_URL}"
+    #     channel: "#alerts-critical"
+    #     send_resolved: true
+    # email_configs:
+    #   - to: "oncall@example.com"
+    #     send_resolved: true
+
+  - name: warning
+    # slack_configs:
+    #   - api_url: "${SLACK_WEBHOOK_URL}"
+    #     channel: "#alerts-warning"
+    #     send_resolved: true
+
+inhibit_rules:
+  # A critical alert suppresses the matching warning for the same SLO.
+  - source_matchers: [severity = "critical"]
+    target_matchers: [severity = "warning"]
+    equal: ["alertname", "slo"]

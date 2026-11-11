@@ -1,0 +1,130 @@
+# SLIs, SLOs and multi-window burn-rate alerts.
+#
+# SLOs (also documented in docs/slo.md):
+#   Availability : 99.5% of requests succeed  (error budget = 0.5%)
+#   Latency      : p95 < 300 ms
+#
+# Burn-rate alerting follows the Google SRE workbook multi-window strategy:
+# a "fast burn" (14.4x) pages quickly, a "slow burn" (6x) opens a ticket.
+
+groups:
+  - name: slo-recording
+    interval: 30s
+    rules:
+      - record: sli:http_availability:ratio_rate5m
+        expr: |
+          sum(rate(http_requests_total{status_code!~"5.."}[5m]))
+          /
+          sum(rate(http_requests_total[5m]))
+
+      - record: sli:http_availability:ratio_rate30m
+        expr: |
+          sum(rate(http_requests_total{status_code!~"5.."}[30m]))
+          /
+          sum(rate(http_requests_total[30m]))
+
+      - record: sli:http_availability:ratio_rate1h
+        expr: |
+          sum(rate(http_requests_total{status_code!~"5.."}[1h]))
+          /
+          sum(rate(http_requests_total[1h]))
+
+      - record: sli:http_error_ratio:rate5m
+        expr: |
+          sum(rate(http_errors_total[5m]))
+          /
+          sum(rate(http_requests_total[5m]))
+
+      - record: sli:http_error_ratio:rate30m
+        expr: |
+          sum(rate(http_errors_total[30m]))
+          /
+          sum(rate(http_requests_total[30m]))
+
+      - record: sli:http_latency_p95:rate5m
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+          )
+
+  - name: slo-alerts
+    rules:
+      - alert: ServiceDown
+        expr: up{job="backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          slo: availability
+        annotations:
+          summary: "Backend is down (up == 0)"
+          description: "Prometheus has not been able to scrape {{ $labels.instance }} for 1 minute."
+          runbook_url: "https://github.com/yashbaviskar15/cicd-pipeline/blob/main/docs/runbooks/service-down.md"
+
+      # Fast burn: 14.4x -> 2% of a 30-day budget in ~1h.
+      - alert: ErrorBudgetFastBurn
+        expr: sli:http_error_ratio:rate5m > (14.4 * 0.005)
+        for: 2m
+        labels:
+          severity: critical
+          slo: availability
+        annotations:
+          summary: "Fast error-budget burn (availability SLO)"
+          description: "5xx ratio {{ $value | humanizePercentage }} is burning the 99.5% availability budget ~14x faster than allowed."
+          runbook_url: "https://github.com/yashbaviskar15/cicd-pipeline/blob/main/docs/runbooks/high-error-rate.md"
+
+      # Slow burn: 6x -> 5% of a 30-day budget in ~6h.
+      - alert: ErrorBudgetSlowBurn
+        expr: sli:http_error_ratio:rate30m > (6 * 0.005)
+        for: 15m
+        labels:
+          severity: warning
+          slo: availability
+        annotations:
+          summary: "Slow error-budget burn (availability SLO)"
+          description: "5xx ratio {{ $value | humanizePercentage }} over 30m is burning the availability budget ~6x faster than allowed."
+          runbook_url: "https://github.com/yashbaviskar15/cicd-pipeline/blob/main/docs/runbooks/high-error-rate.md"
+
+      - alert: HighLatencyP95
+        expr: sli:http_latency_p95:rate5m > 0.3
+        for: 5m
+        labels:
+          severity: warning
+          slo: latency
+        annotations:
+          summary: "p95 latency above the 300 ms SLO"
+          description: "p95 request latency is {{ $value }}s over the last 5m."
+          runbook_url: "https://github.com/yashbaviskar15/cicd-pipeline/blob/main/docs/runbooks/high-latency.md"
+
+      - alert: HighDBLatency
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum(rate(db_query_duration_seconds_bucket[5m])) by (le)
+          ) > 0.25
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Database p95 latency is high"
+          description: "DB p95 latency is {{ $value }}s over the last 5m; check RDS/Postgres load."
+          runbook_url: "https://github.com/yashbaviskar15/cicd-pipeline/blob/main/docs/runbooks/high-latency.md"
+
+      - alert: HighMemoryUsage
+        expr: |
+          process_resident_memory_bytes{job="backend"} > 400 * 1024 * 1024
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Backend memory usage is high"
+          description: "Resident memory has exceeded 400 MiB for 10 minutes."
+
+      - alert: HighEventLoopLag
+        expr: nodejs_eventloop_lag_p99_seconds > 0.2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Node.js event-loop lag is high"
+          description: "p99 event-loop lag is {{ $value }}s; the process may be CPU bound."
