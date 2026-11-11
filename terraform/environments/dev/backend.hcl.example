@@ -1,0 +1,10 @@
+# Copy to backend.hcl and initialise with:
+#   terraform init -backend-config=backend.hcl
+#
+# Values come from `terraform output` in ../../bootstrap.
+
+bucket         = "REPLACE-with-your-terraform-state-bucket"
+key            = "cicd-pipeline/dev/terraform.tfstate"
+region         = "us-east-1"
+dynamodb_table = "terraform-locks"
+encrypt        = true

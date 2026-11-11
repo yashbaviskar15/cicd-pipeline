@@ -1,0 +1,149 @@
+name: Terraform · Apply
+
+# Applies the reusable modules to an environment.
+#  - Manual run (workflow_dispatch): choose dev / staging / prod. The `prod`
+#    AWS job targets the GitHub `prod` Environment, which should have required
+#    reviewers so applying to production needs a manual approval.
+#  - Push to main touching dev Terraform: auto-applies to `dev` only.
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to apply
+        required: true
+        default: dev
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+  push:
+    branches: [main]
+    paths:
+      - "terraform/modules/**"
+      - "terraform/environments/dev/**"
+      - ".github/workflows/terraform-cd.yml"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: terraform-apply-${{ github.event.inputs.environment || 'dev' }}
+  cancel-in-progress: false
+
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+
+jobs:
+  setup:
+    name: Resolve environment
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.set.outputs.environment }}
+    steps:
+      - id: set
+        run: echo "environment=${{ github.event.inputs.environment || 'dev' }}" >> "$GITHUB_OUTPUT"
+
+  plan:
+    name: Plan (${{ needs.setup.outputs.environment }})
+    needs: setup
+    runs-on: ubuntu-latest
+    outputs:
+      has-aws: ${{ steps.gate.outputs.has-aws }}
+    defaults:
+      run:
+        working-directory: terraform/environments/${{ needs.setup.outputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+          terraform_wrapper: false
+
+      - name: Gate on AWS configuration
+        id: gate
+        run: |
+          if [ -n "${{ vars.AWS_GITHUB_ACTIONS_ROLE_ARN }}" ] && [ -n "${{ vars.TF_STATE_BUCKET }}" ]; then
+            echo "has-aws=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has-aws=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::AWS_GITHUB_ACTIONS_ROLE_ARN / TF_STATE_BUCKET not set - skipping plan/apply."
+          fi
+
+      - name: Configure AWS credentials (OIDC)
+        if: ${{ steps.gate.outputs.has-aws == 'true' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+          role-session-name: gha-terraform-apply
+
+      - name: terraform init
+        if: ${{ steps.gate.outputs.has-aws == 'true' }}
+        run: |
+          terraform init -reconfigure \
+            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" \
+            -backend-config="key=cicd-pipeline/${{ needs.setup.outputs.environment }}/terraform.tfstate" \
+            -backend-config="region=${{ vars.AWS_REGION || 'us-east-1' }}" \
+            -backend-config="dynamodb_table=terraform-locks" \
+            -backend-config="encrypt=true"
+
+      - name: terraform plan
+        if: ${{ steps.gate.outputs.has-aws == 'true' }}
+        run: terraform plan -no-color -lock-timeout=5m -var-file=terraform.tfvars.example -out=tfplan
+
+      - name: Upload plan
+        if: ${{ steps.gate.outputs.has-aws == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ needs.setup.outputs.environment }}
+          path: terraform/environments/${{ needs.setup.outputs.environment }}/tfplan
+          retention-days: 5
+
+  apply:
+    name: Apply (${{ needs.setup.outputs.environment }})
+    needs: [setup, plan]
+    # Push to main applies dev automatically; manual runs apply the chosen env.
+    if: ${{ needs.plan.outputs.has-aws == 'true' && (github.event_name == 'workflow_dispatch' || needs.setup.outputs.environment == 'dev') }}
+    runs-on: ubuntu-latest
+    # Targets the GitHub Environment so prod can require manual approval.
+    environment: ${{ needs.setup.outputs.environment }}
+    defaults:
+      run:
+        working-directory: terraform/environments/${{ needs.setup.outputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+          terraform_wrapper: false
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+          role-session-name: gha-terraform-apply
+
+      - name: terraform init
+        run: |
+          terraform init -reconfigure \
+            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" \
+            -backend-config="key=cicd-pipeline/${{ needs.setup.outputs.environment }}/terraform.tfstate" \
+            -backend-config="region=${{ vars.AWS_REGION || 'us-east-1' }}" \
+            -backend-config="dynamodb_table=terraform-locks" \
+            -backend-config="encrypt=true"
+
+      - name: Download plan
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-${{ needs.setup.outputs.environment }}
+          path: terraform/environments/${{ needs.setup.outputs.environment }}
+
+      - name: terraform apply
+        run: terraform apply -auto-approve -lock-timeout=5m tfplan

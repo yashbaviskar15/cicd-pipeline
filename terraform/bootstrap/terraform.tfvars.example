@@ -1,0 +1,8 @@
+# Copy to terraform.tfvars before running `terraform apply` in this directory.
+
+aws_region = "us-east-1"
+
+# Must be globally unique across all AWS accounts.
+state_bucket_name = "my-tfstate-bucket-REPLACE-me"
+
+lock_table_name = "terraform-locks"

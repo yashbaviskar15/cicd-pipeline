@@ -38,3 +38,14 @@ jobs:
   security:
     name: Security scans
     uses: ./.github/workflows/reusable-security.yml
+
+  terraform:
+    name: Terraform (${{ matrix.environment }})
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [dev, staging, prod]
+    uses: ./.github/workflows/reusable-terraform-plan.yml
+    with:
+      environment: ${{ matrix.environment }}
+    secrets: inherit

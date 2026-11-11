@@ -30,7 +30,9 @@ Add these context names (they appear once the workflows have run at least once):
 - `Security scans / Checkov + tfsec (IaC)`
 - `Security scans / Trivy fs (deps & misconfig)`
 - `CodeQL (SAST) / Analyze (javascript-typescript)`
-- `Terraform fmt / validate / plan / fmt · validate · plan (dev)` (once the dev workspace is configured)
+- `Terraform (dev) / Plan (dev)`
+- `Terraform (staging) / Plan (staging)`
+- `Terraform (prod) / Plan (prod)`
 
 > Tip: required checks are matched by the **job name** produced by the
 > workflow. Run the workflow once on a PR, then copy the exact names from the
@@ -40,8 +42,9 @@ Add these context names (they appear once the workflows have run at least once):
 
 | Name | Type | Purpose |
 | --- | --- | --- |
-| `AWS_GITHUB_ACTIONS_ROLE_ARN` | secret | IAM role assumed via OIDC (no long-lived keys) |
+| `AWS_GITHUB_ACTIONS_ROLE_ARN` | variable | IAM role assumed via OIDC (no long-lived keys) |
 | `AWS_REGION` | variable | e.g. `us-east-1` |
+| `TF_STATE_BUCKET` | variable | S3 bucket holding Terraform remote state |
 | `ENABLE_AWS_DEPLOY` | variable | `true` to publish images to ECR + sign |
 | `ENABLE_DEPLOY` | variable | `true` to trigger the CodeDeploy blue/green deploy |
 | `CODEDEPLOY_APP_NAME` | variable | CodeDeploy application name |

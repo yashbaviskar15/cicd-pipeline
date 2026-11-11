@@ -1,0 +1,46 @@
+# Copy to terraform.tfvars and adjust. This is the DEV environment.
+# Everything here is free-tier / low-cost oriented.
+
+aws_region  = "us-east-1"
+project     = "cicd-pipeline"
+environment = "dev"
+
+# --- GitHub (for the OIDC deploy role) ---
+github_owner = "yashbaviskar15"
+github_repo  = "cicd-pipeline"
+# Create the GitHub OIDC provider only ONCE per AWS account (do it in dev).
+create_oidc_provider = true
+allowed_branches     = ["main"]
+
+# --- Networking ---
+vpc_cidr             = "10.0.0.0/16"
+enable_nat_gateway   = true
+single_nat_gateway   = true
+
+# --- Application image (replaced by CI after the first push) ---
+backend_image   = "public.ecr.aws/nginx/nginx:alpine"
+task_cpu        = "256"
+task_memory     = "512"
+desired_count   = 1
+service_version = "dev"
+cors_origin     = "*"
+
+# --- Deployment strategy: ECS (rolling) is cheaper for dev ---
+deployment_controller = "ECS"
+enable_autoscaling    = true
+min_capacity          = 1
+max_capacity          = 2
+
+# --- Database (free-tier eligible) ---
+db_instance_class   = "db.t4g.micro"
+db_allocated_storage = 20
+db_multi_az          = false
+
+# --- TLS / DNS (optional) ---
+enable_https = false
+# certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/xxxx"
+# domain_name     = "dev.example.com"
+# hosted_zone_id  = "Z0123456789ABCDEFGHIJ"
+
+# --- Alerts (optional) ---
+# alarm_email = "you@example.com"
