@@ -34,6 +34,8 @@ Add these context names (they appear once the workflows have run at least once):
 - `Terraform (dev) / Plan (dev)`
 - `Terraform (staging) / Plan (staging)`
 - `Terraform (prod) / Plan (prod)`
+- `Integration (docker compose) / compose up · e2e`
+- `Load test (k6 smoke) / k6 smoke`
 
 > Tip: required checks are matched by the **job name** produced by the
 > workflow. Run the workflow once on a PR, then copy the exact names from the
@@ -51,6 +53,9 @@ Add these context names (they appear once the workflows have run at least once):
 | `CODEDEPLOY_APP_NAME` | variable | CodeDeploy application name |
 | `CODEDEPLOY_GROUP_NAME` | variable | CodeDeploy deployment group |
 | `ECS_TASK_DEFINITION_ARN` | variable | Task definition ARN for the release |
+| `ECS_CLUSTER_NAME` | variable | ECS cluster name (capture/rollback of the known-good revision) |
+| `ECS_SERVICE_NAME` | variable | ECS service name (capture/rollback of the known-good revision) |
+| `APP_BASE_URL` | variable | Public HTTPS URL the post-deploy smoke test hits |
 | `INFRACOST_API_KEY` | secret | Enables the Infracost estimate on PRs |
 
 See [docs/deployment-guide.md](deployment-guide.md) for how to create the OIDC

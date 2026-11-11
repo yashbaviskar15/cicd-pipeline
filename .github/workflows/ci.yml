@@ -53,3 +53,13 @@ jobs:
     with:
       environment: ${{ matrix.environment }}
     secrets: inherit
+
+  integration:
+    name: Integration (docker compose)
+    uses: ./.github/workflows/reusable-integration.yml
+
+  load-test:
+    name: Load test (k6 smoke)
+    uses: ./.github/workflows/reusable-load-test.yml
+    with:
+      scenario: smoke

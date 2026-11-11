@@ -1,0 +1,75 @@
+name: Reusable · Load test (k6)
+
+# Runs a k6 scenario against a locally-started stack. The `smoke` scenario runs
+# on every PR; the `stress` scenario is meant for workflow_dispatch only (see
+# .github/workflows/load-test.yml).
+on:
+  workflow_call:
+    inputs:
+      scenario:
+        description: k6 script to run (smoke | stress)
+        required: false
+        type: string
+        default: smoke
+      base-url:
+        description: Target base URL (defaults to the local compose stack)
+        required: false
+        type: string
+        default: http://localhost:3000
+      start-stack:
+        description: Start the local docker compose stack before running k6
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  k6:
+    name: k6 ${{ inputs.scenario }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Start Postgres + backend
+        if: ${{ inputs.start-stack }}
+        run: docker compose up -d --build postgres backend
+
+      - name: Wait for the API to be ready
+        if: ${{ inputs.start-stack }}
+        run: |
+          for i in $(seq 1 40); do
+            if curl -sf "${{ inputs.base-url }}/health/ready" >/dev/null; then
+              echo "API ready after ${i} attempt(s)"; exit 0
+            fi
+            echo "waiting for API... ($i/40)"; sleep 3
+          done
+          echo "::error::API did not become ready in time"
+          docker compose logs --no-color --tail=200
+          exit 1
+
+      - name: Install k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Run k6 ${{ inputs.scenario }}
+        uses: grafana/run-k6-action@v1
+        env:
+          BASE_URL: ${{ inputs.base-url }}
+        with:
+          path: tests/load/${{ inputs.scenario }}.js
+          flags: --summary-export=k6-summary.json
+
+      - name: Upload k6 summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-${{ inputs.scenario }}-summary
+          path: k6-summary.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Tear down
+        if: ${{ always() && inputs.start-stack }}
+        run: docker compose down -v

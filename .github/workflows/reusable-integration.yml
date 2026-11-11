@@ -1,0 +1,61 @@
+name: Reusable · Integration (docker compose)
+
+# Brings up the real stack (Postgres + backend) with docker compose, waits for
+# it to become ready, then runs the end-to-end smoke test in scripts/smoke-test.mjs
+# against it. This is the "integration test" layer: real HTTP, real database,
+# real migrations — the closest thing to production short of the ALB.
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        description: Node.js version used to run the smoke script
+        required: false
+        type: string
+        default: "20"
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    name: compose up · e2e
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node ${{ inputs.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      - name: Start Postgres + backend
+        run: docker compose up -d --build postgres backend
+
+      - name: Wait for the API to be ready
+        run: |
+          for i in $(seq 1 40); do
+            if curl -sf http://localhost:3000/health/ready >/dev/null; then
+              echo "API is ready after ${i} attempt(s)"
+              exit 0
+            fi
+            echo "waiting for API... ($i/40)"
+            sleep 3
+          done
+          echo "::error::API did not become ready in time"
+          docker compose logs --no-color --tail=200
+          exit 1
+
+      - name: Run end-to-end integration test
+        run: node scripts/smoke-test.mjs
+        env:
+          BASE_URL: http://localhost:3000
+          SMOKE_RETRIES: "3"
+
+      - name: Container logs (on failure)
+        if: failure()
+        run: docker compose logs --no-color --tail=300
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

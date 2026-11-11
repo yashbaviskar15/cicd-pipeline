@@ -1,0 +1,30 @@
+name: Load test (on demand)
+
+# Manual, on-demand performance test. The smoke scenario is also run on every
+# PR by ci.yml; use this workflow to run the heavier stress scenario against a
+# deployed environment (or a local stack) before a release.
+on:
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: k6 scenario to run
+        required: true
+        type: choice
+        options: [smoke, stress]
+        default: stress
+      base-url:
+        description: Target base URL (leave blank to use the local compose stack)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  load-test:
+    name: k6 ${{ inputs.scenario }}
+    uses: ./.github/workflows/reusable-load-test.yml
+    with:
+      scenario: ${{ inputs.scenario }}
+      base-url: ${{ inputs.base-url || 'http://localhost:3000' }}
+      start-stack: ${{ inputs.base-url == '' }}

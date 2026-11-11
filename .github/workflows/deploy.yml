@@ -102,6 +102,9 @@ jobs:
     permissions:
       contents: read
       id-token: write
+    outputs:
+      deployment_id: ${{ steps.trigger.outputs.deployment_id }}
+      previous_task_definition: ${{ steps.previous.outputs.task_definition }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -112,12 +115,83 @@ jobs:
           role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Trigger CodeDeploy blue/green deployment
+      # Remember the currently-serving (known-good) task definition so we can
+      # roll back to it if the post-deploy smoke test fails.
+      - name: Capture current known-good task definition
+        id: previous
         run: |
-          aws deploy create-deployment \
+          PREV=$(aws ecs describe-services \
+            --cluster "${{ vars.ECS_CLUSTER_NAME }}" \
+            --services "${{ vars.ECS_SERVICE_NAME }}" \
+            --query 'services[0].taskDefinition' --output text)
+          echo "Known-good task definition: $PREV"
+          echo "task_definition=$PREV" >> "$GITHUB_OUTPUT"
+
+      - name: Trigger CodeDeploy blue/green deployment
+        id: trigger
+        run: |
+          DEPLOYMENT_ID=$(aws deploy create-deployment \
             --application-name "${{ vars.CODEDEPLOY_APP_NAME }}" \
             --deployment-group-name "${{ vars.CODEDEPLOY_GROUP_NAME }}" \
             --deployment-config-name CodeDeployDefault.ECSAllAtOnce \
             --revision "revisionType=AppSpecContent,appSpecContent={content='{\"version\":0.0,\"Resources\":[{\"TargetService\":{\"Type\":\"AWS::ECS::Service\",\"Properties\":{\"TaskDefinition\":\"${{ vars.ECS_TASK_DEFINITION_ARN }}\",\"LoadBalancerInfo\":{\"ContainerName\":\"backend\",\"ContainerPort\":3000}}}}]}'}" \
             --description "GitHub Actions ${GITHUB_SHA}" \
+            --query 'deploymentId' --output text)
+          echo "Started CodeDeploy deployment $DEPLOYMENT_ID"
+          echo "deployment_id=$DEPLOYMENT_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for the blue/green deployment to finish
+        run: |
+          aws deploy wait deployment-successful --deployment-id "${{ steps.trigger.outputs.deployment_id }}"
+
+  smoke:
+    name: Post-deploy smoke test
+    needs: deploy
+    if: ${{ vars.ENABLE_AWS_DEPLOY == 'true' && vars.ENABLE_DEPLOY == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # continue-on-error lets us run the rollback step before failing the job.
+      - name: Run post-deploy smoke tests
+        id: smoke
+        continue-on-error: true
+        run: node scripts/smoke-test.mjs
+        env:
+          BASE_URL: ${{ vars.APP_BASE_URL }}
+          SMOKE_RETRIES: "3"
+
+      # Automatic rollback: redeploy the previous known-good task definition as
+      # a new blue/green deployment. CodeDeploy swaps traffic back to the old
+      # (blue) revision, restoring the service without a manual intervention.
+      - name: Automatic rollback to previous task definition
+        if: steps.smoke.outcome == 'failure'
+        run: |
+          echo "::warning::Smoke tests failed — rolling back to ${{ needs.deploy.outputs.previous_task_definition }}"
+          aws deploy create-deployment \
+            --application-name "${{ vars.CODEDEPLOY_APP_NAME }}" \
+            --deployment-group-name "${{ vars.CODEDEPLOY_GROUP_NAME }}" \
+            --deployment-config-name CodeDeployDefault.ECSAllAtOnce \
+            --revision "revisionType=AppSpecContent,appSpecContent={content='{\"version\":0.0,\"Resources\":[{\"TargetService\":{\"Type\":\"AWS::ECS::Service\",\"Properties\":{\"TaskDefinition\":\"${{ needs.deploy.outputs.previous_task_definition }}\",\"LoadBalancerInfo\":{\"ContainerName\":\"backend\",\"ContainerPort\":3000}}}}]}'}" \
+            --description "Automatic rollback of ${GITHUB_SHA}" \
             --output json
+          echo "::error::Deployment rolled back automatically. Investigate the failing smoke test."
+
+      - name: Fail the workflow if rollback was triggered
+        if: steps.smoke.outcome == 'failure'
+        run: exit 1
