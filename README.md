@@ -1,317 +1,321 @@
-# CI/CD Pipeline and Cloud Infrastructure
+# Production-Ready DevSecOps Platform
 
-[![CI Pipeline](https://github.com/yashbaviskar15/cicd-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/yashbaviskar15/cicd-pipeline/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Node.js](https://img.shields.io/badge/Node.js-Express-339933?logo=node.js&logoColor=white)](backend)
-[![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?logo=docker&logoColor=white)](docker-compose.yml)
-[![AWS](https://img.shields.io/badge/AWS-ECS%20Fargate-FF9900?logo=amazonaws&logoColor=white)](docs/aws-setup.md)
+[![CI](https://github.com/yashbaviskar15/cicd-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/yashbaviskar15/cicd-pipeline/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/yashbaviskar15/cicd-pipeline/actions/workflows/codeql.yml/badge.svg)](https://github.com/yashbaviskar15/cicd-pipeline/actions/workflows/codeql.yml)
+[![Coverage](https://img.shields.io/badge/coverage-%3E80%25-brightgreen)](backend/jest.config.js)
+[![Security](https://img.shields.io/badge/security-CodeQL%20%7C%20Trivy%20%7C%20Gitleaks-blueviolet)](docs/security.md)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%E2%89%A520-339933?logo=node.js&logoColor=white)](backend)
 [![Terraform](https://img.shields.io/badge/IaC-Terraform-7B42BC?logo=terraform&logoColor=white)](terraform)
+[![Kubernetes](https://img.shields.io/badge/k8s-Helm%20%7C%20ArgoCD-326CE5?logo=kubernetes&logoColor=white)](deploy)
 
-A production-style CI/CD pipeline and cloud infrastructure demonstration. This project showcases modern DevOps engineering practices including containerization, automated testing, linting, continuous integration, blue/green deployments, infrastructure as code, and observability.
+A portfolio-grade **Production-Ready DevSecOps Platform**: a real Task/Notes
+REST API shipped through a secure, observable, multi-environment delivery
+pipeline — the kind of thing an SRE/DevOps team actually runs.
+
+> **The point of this repo is the pipeline and the platform, not the CRUD app.**
+> The app exists so every claim (blue/green rollback, SLO alerts, autoscaling,
+> IaC) can be demonstrated against something real.
 
 ---
 
-## Live Deployments
+## Why this exists (problem statement)
 
-- Frontend Dashboard: [cicd-pipeline-frontend.vercel.app](https://cicd-pipeline-frontend.vercel.app/)
-- Backend Service: [cicd-pipeline-backend.vercel.app](https://cicd-pipeline-backend.vercel.app/)
-- Repository: [github.com/yashbaviskar15/cicd-pipeline](https://github.com/yashbaviskar15/cicd-pipeline)
+Standing up a container is easy; running a service **safely, cheaply and
+observably** is not. This project answers the questions a production team faces:
+
+- How do we ship changes **without downtime** and **roll back automatically**
+  when a release is bad?
+- How do we prove, on every PR, that code **is tested, scanned and signed**?
+- How do we avoid **long-lived cloud credentials**?
+- How do we know **whether users are affected** — and alert on that, not on CPU?
+- How do we keep **three environments consistent** without copy-paste drift —
+  and stay **free-tier friendly**?
+
+Every answer is implemented, tested and documented here.
+
+---
+
+## 2-minute demo
+
+<!-- Record with: asciinema/terminalizer, or a screen capture of `make up`, the
+     CI PR checks, a blue/green deploy and the Grafana SLO dashboard. -->
+
+![2-minute demo walkthrough](docs/screenshots/demo.gif)
+
+*The demo shows: PR checks passing → merge → build/scan/sign → blue/green
+deploy → post-deploy smoke test → Grafana SLO dashboard → an injected bad deploy
+being rolled back automatically.*
 
 ![CI/CD Pipeline Dashboard](docs/screenshots/dashboard.png)
 
 ---
 
-## Table of Contents
-
-- [System Architecture](#system-architecture)
-- [CI/CD Pipeline Flow](#cicd-pipeline-flow)
-- [Blue/Green Deployment Flow](#bluegreen-deployment-flow)
-- [Tech Stack](#tech-stack)
-- [API Reference](#api-reference)
-- [Local Development](#local-development)
-- [Testing and Linting](#testing-and-linting)
-- [Infrastructure as Code](#infrastructure-as-code)
-- [Project Structure](#project-structure)
-- [Cost and Resource Estimation](#cost-and-resource-estimation)
-- [License](#license)
-- [Author](#author)
-
----
-
-## System Architecture
-
-The project consists of a decoupled frontend dashboard and backend REST API service designed for multi-environment deployment (local Docker containers, Vercel Serverless, and AWS ECS Fargate behind an Application Load Balancer).
+## Architecture
 
 ```mermaid
 flowchart TB
-    subgraph Clients["Client Layer"]
-        Browser["Web Browser / Client"]
+    subgraph Users["Users"]
+        Browser["Browser / API client"]
     end
 
-    subgraph CDN["Edge & Delivery Layer"]
-        VercelFront["Vercel Frontend CDN"]
-        ALB["AWS Application Load Balancer"]
+    subgraph Edge["Edge"]
+        Vercel["Vercel (static frontend)"]
+        ALB["AWS ALB (HTTPS)"]
     end
 
-    subgraph Services["Compute & Microservices"]
-        VercelBack["Vercel Serverless Backend"]
-        ECSFargate["AWS ECS Fargate Cluster"]
-        subgraph Tasks["ECS Task Containers"]
-            BackendContainer["Node.js Express API (Port 3000)"]
-            FrontendContainer["Nginx Static Host (Port 80)"]
-        end
+    subgraph Compute["Compute (AWS primary)"]
+        ECS["ECS Fargate + CodeDeploy blue/green"]
     end
 
-    subgraph Observability["Monitoring Layer"]
-        CloudWatch["Amazon CloudWatch Alarms & Logs"]
+    subgraph Data["Data"]
+        RDS[("RDS PostgreSQL (private)")]
+        SM["Secrets Manager"]
     end
 
-    Browser -->|HTTPS| VercelFront
-    Browser -->|API Requests| VercelBack
-    Browser -->|Direct ALB Traffic| ALB
-    ALB --> ECSFargate
-    ECSFargate --> BackendContainer
-    ECSFargate --> FrontendContainer
-    BackendContainer --> CloudWatch
-    FrontendContainer --> CloudWatch
+    subgraph Obs["Observability"]
+        Prom["Prometheus → Grafana"]
+        Loki["Loki + Promtail"]
+        Jaeger["Jaeger (OTel traces)"]
+        CW["CloudWatch alarms"]
+    end
+
+    subgraph CICD["CI/CD (GitHub Actions + OIDC)"]
+        ECR["Amazon ECR (signed images)"]
+        CD["CodeDeploy"]
+    end
+
+    Browser -->|HTTPS| Vercel
+    Browser -->|HTTPS| ALB --> ECS
+    ECS --> RDS
+    ECS -.->|secrets| SM
+    ECS --> CW
+    ECS --> Prom
+    ECS --> Loki
+    ECS --> Jaeger
+    ECR --> CD --> ECS
 ```
 
----
+There is also a **Kubernetes track** (Helm chart, Kustomize overlays, Argo CD
+app-of-apps, optional EKS) so the same image can run either way.
 
-## CI/CD Pipeline Flow
-
-Every code commit triggers an automated pipeline that validates code quality, executes unit tests, constructs multi-stage Docker images, and deploys artifacts.
-
-```mermaid
-flowchart LR
-    subgraph Source["Source Control"]
-        Dev["Developer"] -->|git push| GitHub["GitHub Repo (main branch)"]
-    end
-
-    subgraph CI["GitHub Actions CI Pipeline"]
-        GitHub --> ActionLint["Setup Node.js & npm ci"]
-        ActionLint --> LintStep["Lint Check (ESLint)"]
-        LintStep --> TestStep["Unit Tests (Jest & Supertest)"]
-        TestStep --> DockerBuild["Docker Build (Backend & Frontend)"]
-        DockerBuild --> SmokeTest["Container Smoke Tests (curl health)"]
-    end
-
-    subgraph Deploy["Automated Deployment"]
-        SmokeTest --> VercelDeploy["Vercel Production Deploy"]
-        SmokeTest --> AWSDeploy["Push Images to Amazon ECR"]
-        AWSDeploy --> CodePipeline["AWS CodePipeline / CodeDeploy"]
-    end
-
-    subgraph Target["Live Environments"]
-        VercelDeploy --> LiveVercel["Production Web Dashboard"]
-        CodePipeline --> LiveECS["AWS ECS Fargate (Zero Downtime)"]
-    end
-```
+Deeper design: [docs/architecture.md](docs/architecture.md) ·
+Decisions: [docs/adr/](docs/adr/) · Deploys: [docs/deployment-guide.md](docs/deployment-guide.md).
 
 ---
 
-## Blue/Green Deployment Flow
+## Tech stack
 
-For AWS deployments, CodeDeploy orchestrates zero-downtime blue/green traffic shifting with automatic rollback on CloudWatch error spikes.
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant CP as AWS CodePipeline
-    participant CD as AWS CodeDeploy
-    participant ALB as Application Load Balancer
-    participant Blue as Blue Fleet (Active)
-    participant Green as Green Fleet (Replacement)
-    participant CW as CloudWatch Alarms
-
-    CP->>CD: Trigger Blue/Green Deployment with new Task Def
-    CD->>Green: Provision Green ECS Tasks
-    Green-->>CD: Green Tasks Healthy
-    CD->>ALB: Reroute Test Traffic to Green (Port 8080)
-    CD->>CW: Monitor Health & Error Metric Alarms
-    alt Alarms Triggered
-        CW->>CD: Health Alarm Breach
-        CD->>ALB: Rollback Traffic to Blue Fleet
-        CD->>Green: Terminate Green Tasks
-    else Deployment Successful
-        CD->>ALB: Shift 100% Production Traffic to Green (Port 80)
-        CD->>Blue: Terminate Blue Tasks after cool-down period
-    end
-```
+| Layer | Technology |
+| --- | --- |
+| **Application** | Node.js 20, Express 4, Prisma ORM |
+| **Database** | PostgreSQL 16 (RDS `db.t4g.micro`, free-tier eligible) |
+| **Auth** | JWT (access + refresh), bcrypt, `zod` validation, `express-rate-limit`, `helmet` |
+| **Logging/observability** | `pino` JSON logs, `prom-client` metrics, OpenTelemetry tracing |
+| **API docs** | OpenAPI 3.0.3 + Swagger UI at `/docs` |
+| **Testing** | Jest + Supertest (>80% coverage gate), k6 load tests, e2e smoke tests |
+| **Container** | Docker multi-stage, Alpine, non-root, healthcheck |
+| **CI/CD** | GitHub Actions (reusable workflows, matrix), GitHub OIDC, semantic-release |
+| **DevSecOps** | CodeQL, Trivy, Gitleaks, Hadolint, Checkov, tfsec, Syft SBOM, Cosign |
+| **IaC** | Terraform (modules + 3 environments, S3/DynamoDB remote state) |
+| **Cloud** | AWS VPC, ALB, ECS Fargate, ECR, RDS, Secrets Manager, CodeDeploy, CloudWatch |
+| **Kubernetes** | Helm, Kustomize, Argo CD (GitOps), kind (local) |
+| **Observability stack** | Prometheus, Grafana, Loki, Promtail, Alertmanager, OpenTelemetry, Jaeger |
+| **DX** | Makefile, husky + lint-staged, devcontainer, EditorConfig |
 
 ---
 
-## Tech Stack
+## Highlights
 
-| Layer | Technology | Details |
-|---|---|---|
-| Backend | Node.js, Express 4.x | REST API, CORS support, JSON serialization |
-| Frontend | HTML5, CSS3, JavaScript ES6+ | Responsive light dashboard, live metrics, API explorer |
-| Containerization | Docker, Docker Compose | Multi-stage production builds, Alpine Linux base |
-| Continuous Integration | GitHub Actions | Automated linting, Jest testing, Docker smoke tests |
-| Container Registry | Amazon ECR | Versioned Docker image repository |
-| Cloud Compute | AWS ECS (Fargate) | Serverless container orchestration |
-| Load Balancing | AWS ALB | HTTP/HTTPS routing, target groups, health probes |
-| Deployment Automation | AWS CodeDeploy, Vercel | Blue/green zero-downtime deployment, serverless edge |
-| Infrastructure as Code | HashiCorp Terraform | Modular infrastructure definitions with state control |
-| Monitoring & Logs | Amazon CloudWatch | Metric alarms, container logs, auto-rollback hooks |
-| Testing Suite | Jest, Supertest, ESLint | Unit testing, HTTP assertion, static code analysis |
-
----
-
-## API Reference
-
-The backend exposes the following REST endpoints:
-
-| Method | Endpoint | Description | Sample Response |
-|---|---|---|---|
-| `GET` | `/` | Service overview, status, and endpoint directory | `{"service":"cicd-backend","status":"healthy","version":"1.0.0","uptime":120,"endpoints":[...]}` |
-| `GET` | `/health` | Health probe for load balancers and orchestrators | `{"status":"healthy","timestamp":"2026-08-29T...","service":"backend","uptime":120,"environment":"production"}` |
-| `GET` | `/api/data` | Sample payload endpoint for frontend consumers | `{"message":"Hello from the backend service!","version":"1.0.0","timestamp":"2026-08-29T..."}` |
+- **Secure CI/CD** — SAST (CodeQL), dependency + image scanning (Trivy, fail on
+  HIGH/CRITICAL), secret scanning (Gitleaks), IaC scanning (Checkov/tfsec),
+  Dockerfile lint (Hadolint), **SBOM** (Syft) and **image signing** (Cosign).
+- **No long-lived cloud credentials** — GitHub **OIDC** assumes a scoped IAM role.
+- **Blue/green deploys with automatic rollback** — CodeDeploy + a post-deploy
+  smoke test that reverts to the last known-good revision on failure.
+- **Multi-environment IaC** — reusable Terraform modules, per-env tfvars,
+  independent remote state with DynamoDB locking, PR plan comments, Infracost
+  estimates and a manual approval gate for prod.
+- **SLO-driven reliability** — 99.5% availability / p95 < 300 ms, multi-window
+  burn-rate alerts, three runbooks and documented failure drills.
+- **Observability as code** — Prometheus rules, Grafana dashboards and
+  datasources are version-controlled.
+- **Performance in CI** — k6 smoke test on every PR, stress test on demand.
+- **Kubernetes ready** — Helm chart + Kustomize overlays + Argo CD app-of-apps.
 
 ---
 
-## Local Development
+## Quickstart
 
-### Prerequisites
-- Node.js 20+ and npm
-- Docker Desktop
-- Git
-
-### Option 1: Run with Docker Compose
 ```bash
-# Clone the repository
 git clone https://github.com/yashbaviskar15/cicd-pipeline.git
 cd cicd-pipeline
 
-# Build and start all services
-docker compose up -d --build
-
-# View container logs
-docker compose logs -f
-
-# Stop services
-docker compose down
+make setup      # install deps + git hooks
+make up         # start postgres + backend + frontend
+make obs-up     # start Prometheus + Grafana + Loki + Jaeger (optional)
 ```
 
-Local service ports:
-- Frontend Dashboard: `http://localhost:8080`
-- Backend API: `http://localhost:3000`
+| Service | URL |
+| --- | --- |
+| Frontend dashboard | http://localhost:8080 |
+| API | http://localhost:3000 |
+| API docs (Swagger) | http://localhost:3000/docs |
+| Metrics | http://localhost:3000/metrics |
+| Grafana | http://localhost:3001 (admin/admin) |
+| Prometheus | http://localhost:9090 |
+| Jaeger | http://localhost:16686 |
 
-### Option 2: Run Backend Directly with Node.js
-```bash
-cd backend
-npm install
-npm run dev     # Starts with nodemon on port 3000
-```
+`make help` lists every target (`lint`, `test`, `scan`, `tf-plan`, `load-test`,
+`k8s-up`, …). Run `make doctor` to check your tooling.
 
-### Option 3: Using Windows Batch Scripts
-- Double-click `build.bat` to build images.
-- Double-click `start.bat` to run the stack.
-- Double-click `stop.bat` to stop containers.
+### API at a glance
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `POST` | `/api/auth/register` | Register a user |
+| `POST` | `/api/auth/login` | Log in, returns access + refresh tokens |
+| `POST` | `/api/auth/refresh` | Exchange a refresh token |
+| `GET` | `/api/auth/me` | Current user |
+| `GET`/`POST` | `/api/tasks` | List / create tasks (paginated, filterable) |
+| `GET`/`PATCH`/`PUT`/`DELETE` | `/api/tasks/{id}` | Read / update / delete a task |
+| `GET` | `/api/tasks/stats` | Task counts by status |
+| `GET` | `/health`, `/health/live`, `/health/ready` | Health / liveness / readiness |
+| `GET` | `/metrics`, `/docs` | Prometheus metrics, Swagger UI |
+
+Full, always-current reference: **http://localhost:3000/docs**.
 
 ---
 
-## Testing and Linting
+## Design decisions
 
-All unit tests and lint checks can be run locally using the npm scripts:
+The interesting part of a platform is the *why*. Recorded as ADRs:
 
-```bash
-cd backend
-
-# Run ESLint static analysis
-npm run lint
-
-# Run Jest unit and integration tests
-npm test
-```
-
----
-
-## Infrastructure as Code
-
-AWS cloud resources are fully defined using Terraform inside the `terraform/` directory:
-
-| File | Resource Provisioned |
-|---|---|
-| `vpc.tf` | Custom VPC with public/private subnets and route tables |
-| `alb.tf` | Application Load Balancer, listeners, and target groups |
-| `ecs.tf` | ECS Cluster, Task Definitions, and Fargate Services |
-| `ecr.tf` | Amazon Elastic Container Registries for frontend & backend |
-| `codepipeline.tf` | CodePipeline stages (Source, Build, Deploy) |
-| `codedeploy.tf` | CodeDeploy Blue/Green deployment configuration |
-| `cloudwatch.tf` | CloudWatch log groups and rollback metric alarms |
-| `iam.tf` | Least-privilege IAM roles and execution policies |
-
-To plan or apply infrastructure changes:
-```bash
-cd terraform
-terraform init
-terraform plan
-terraform apply
-```
+| Decision | ADR |
+| --- | --- |
+| ECS Fargate over EKS | [0001](docs/adr/0001-ecs-fargate-over-eks.md) |
+| Blue/green over rolling updates | [0002](docs/adr/0002-blue-green-over-rolling-deploys.md) |
+| Reusable Terraform modules + multi-env | [0003](docs/adr/0003-terraform-modules-and-multi-env.md) |
+| GitHub OIDC over static AWS keys | [0004](docs/adr/0004-github-oidc-over-static-keys.md) |
+| PostgreSQL + Prisma | [0005](docs/adr/0005-postgresql-prisma.md) |
+| Observability stack + SLO alerting | [0006](docs/adr/0006-observability-and-slos.md) |
 
 ---
 
-## Project Structure
+## Security model
+
+Defence in depth, enforced in CI (see [docs/security.md](docs/security.md)):
+
+- **Identity:** OIDC-assumed, short-lived AWS credentials — no static keys.
+- **Supply chain:** SBOM, image signing (Cosign keyless) + verification.
+- **Code & CI:** CodeQL, Gitleaks, Trivy, Hadolint, Checkov/tfsec — all required
+  checks that block merges.
+- **Runtime:** least-privilege IAM, private subnets for tasks/DB, TLS everywhere,
+  `zod` input validation, rate limiting, `helmet`, non-root read-only containers.
+- **Secrets:** Secrets Manager (AWS) / GitHub vars (CI) / `.env` (local) —
+  never committed; `.env.example` is the template.
+
+---
+
+## Cost breakdown
+
+The platform is designed to run **near free-tier**. Below is the realistic
+monthly cost for a **small always-on prod** environment (us-east-1, on-demand,
+no free tier assumed). Dev/staging are much cheaper (single NAT, 1 task).
+
+| Resource | Config | ~Monthly |
+| --- | --- | --- |
+| ECS Fargate | 0.25 vCPU / 0.5 GB, 2 tasks, always on | ~$18 |
+| Application Load Balancer | 1 ALB + minimal LCU | ~$18 |
+| NAT Gateway | 1 NAT + light data processing | ~$33 |
+| RDS PostgreSQL | `db.t4g.micro`, 20 GB gp3, single-AZ | ~$13 |
+| ECR | 2 repos, a few GB, lifecycle-pruned | ~$1 |
+| Secrets Manager | 1–2 secrets | ~$1 |
+| CloudWatch | logs + alarms + dashboard | ~$5 |
+| Route 53 + ACM | optional hosted zone, ACM cert free | ~$1 |
+| **Total** | | **≈ $90 / month** |
+
+Ways it drops dramatically:
+
+- **Free tier / t4g.micro RDS** can make the DB ~$0 for 12 months.
+- **Fargate Spot** (`use_fargate_spot = true`) cuts compute ~70%.
+- **Destroy non-prod** when idle (`terraform destroy`), keep only dev.
+- **Single NAT gateway** in dev (`single_nat_gateway = true`) already applied.
+- Running everything **locally** (docker compose + observability) costs $0.
+
+> Always run `terraform destroy` on throwaway environments. The ALB and NAT
+> gateway are the two line items that quietly bill 24/7.
+
+---
+
+## Project structure
 
 ```text
 cicd-pipeline/
-├── .github/
-│   └── workflows/
-│       ├── ci.yml                 # GitHub Actions CI workflow
-│       └── deploy.yml             # AWS ECR container build & push workflow
-├── backend/
-│   ├── src/
-│   │   ├── index.js               # Express application entry point
-│   │   └── index.test.js          # Jest and Supertest test suite
-│   ├── .dockerignore
-│   ├── .eslintrc.json             # ESLint configuration
-│   ├── Dockerfile                 # Multi-stage Docker build
-│   ├── package.json
-│   ├── package-lock.json
-│   └── vercel.json                # Vercel serverless routing
-├── frontend/
-│   ├── Dockerfile                 # Nginx-based container build
-│   ├── index.html                 # Production dashboard UI
-│   └── vercel.json                # Vercel static routing
-├── terraform/                     # Complete Terraform IaC modules
-├── buildspec.yml                  # AWS CodeBuild specification
-├── docker-compose.yml             # Local multi-container configuration
-├── .gitignore
-├── LICENSE                        # MIT License
-└── README.md
+├── backend/                 # Node/Express API (Prisma, JWT, metrics, OpenAPI)
+├── frontend/                # Nginx static dashboard (auth, CRUD, live metrics)
+├── .github/workflows/       # CI: reusable workflows, CodeQL, security, deploy
+├── terraform/
+│   ├── bootstrap/           # S3 state bucket + DynamoDB lock table
+│   ├── modules/             # vpc, alb, ecs, rds, ecr, iam, monitoring, (eks)
+│   ├── environments/        # dev, staging, prod (tfvars + remote state)
+│   └── legacy/              # original flat config (reference only)
+├── deploy/
+│   ├── helm/backend/        # Helm chart (probes, HPA, PDB, ServiceMonitor)
+│   ├── k8s/                 # Kustomize base + dev/prod overlays
+│   ├── argocd/              # GitOps app-of-apps
+│   └── kind/                # local cluster config
+├── observability/           # Prometheus, Grafana, Loki, Promtail, OTel configs
+├── tests/load/              # k6 smoke + stress scripts
+├── scripts/                 # smoke-test.mjs, windows/ (legacy scripts)
+├── docs/                    # architecture, security, ADRs, runbooks, SLOs …
+├── docker-compose.yml       # app stack
+├── docker-compose.observability.yml
+└── Makefile                 # make help
 ```
 
 ---
 
-## Cost and Resource Estimation
+## Documentation
 
-Estimated AWS baseline costs for running this infrastructure:
+| Doc | Contents |
+| --- | --- |
+| [architecture.md](docs/architecture.md) | System, request lifecycle and pipeline diagrams |
+| [deployment-guide.md](docs/deployment-guide.md) | Bootstrap → deploy → promote → rollback → teardown |
+| [security.md](docs/security.md) | Threat model, controls, how to verify |
+| [troubleshooting.md](docs/troubleshooting.md) | Symptom → cause → fix |
+| [slo.md](docs/slo.md) | SLIs, SLOs, error budget, burn-rate alerts |
+| [runbooks/](docs/runbooks/) | service-down, high-error-rate, high-latency |
+| [chaos-drill.md](docs/chaos-drill.md) | Kill a task, break the DB, bad deploy |
+| [branch-protection.md](docs/branch-protection.md) | Required checks, branch rules |
+| [adr/](docs/adr/) | Architecture Decision Records |
+| [interview-talking-points.md](docs/interview-talking-points.md) | STAR answers for this project |
 
-| Resource | Estimated Cost | Free Tier Available |
-|---|---|---|
-| Amazon ECS Fargate | ~$0.01 per task-hour (0.25 vCPU / 0.5 GB RAM) | Yes |
-| Application Load Balancer | ~$0.025 per hour + LCU usage | No |
-| Amazon ECR | $0.10 per GB-month (first 500 MB free) | Yes |
-| Amazon CloudWatch | Metrics and logs within standard free allocation | Yes |
+---
 
-To prevent ongoing cloud charges when finished testing:
-```bash
-cd terraform
-terraform destroy
-```
+## What I learned
+
+- **Automation is a system, not a script.** Splitting PR checks from the main
+  pipeline (reusable workflows) kept feedback fast and deploys safe.
+- **Security gates must block merges to matter.** A scan that warns and passes
+  is decoration; required checks turn policy into truth.
+- **Credibility comes from trade-offs.** Choosing Fargate over EKS because the
+  team is small was more defensible than chasing Kubernetes — and shipping the
+  Kubernetes track *as an option* proved I could do both.
+- **Alert on symptoms, not causes.** Burn-rate alerts on an SLO page you when
+  users hurt; CPU alerts mostly page you for nothing.
+- **Rollback is a feature you must rehearse.** The chaos drills turned "we could
+  roll back" into "we have rolled back, here's the evidence".
+- **Free-tier discipline is design.** Single NAT, Spot, lifecycle policies and
+  `terraform destroy` are architecture decisions, not afterthoughts.
 
 ---
 
 ## License
 
-This project is open source and available under the [MIT License](LICENSE).
-
----
+MIT — see [LICENSE](LICENSE).
 
 ## Author
 
-**Yash Baviskar**
-- GitHub: [@yashbaviskar15](https://github.com/yashbaviskar15)
-- LinkedIn: [Yash Baviskar](https://www.linkedin.com/in/yashbaviskar15)
+**Yash Baviskar** · [GitHub @yashbaviskar15](https://github.com/yashbaviskar15) ·
+[LinkedIn](https://www.linkedin.com/in/yashbaviskar15)
