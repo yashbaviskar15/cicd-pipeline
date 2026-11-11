@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ---- Stage 1: install dependencies + generate Prisma client ----
-FROM node:20-alpine AS deps
+FROM node:26-alpine AS deps
 WORKDIR /app
 COPY package*.json ./
 COPY prisma ./prisma
@@ -9,7 +9,7 @@ COPY prisma ./prisma
 RUN npm ci --omit=dev
 
 # ---- Stage 2: runtime ----
-FROM node:20-alpine AS runtime
+FROM node:26-alpine AS runtime
 ENV NODE_ENV=production \
     PORT=3000
 
