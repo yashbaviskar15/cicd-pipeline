@@ -8,10 +8,16 @@
     "node": ">=20"
   },
   "scripts": {
+    "prepare": "husky",
     "lint": "npm --prefix backend run lint",
     "test": "npm --prefix backend run test",
     "test:coverage": "npm --prefix backend run test:coverage",
+    "smoke": "node scripts/smoke-test.mjs",
     "release": "semantic-release"
+  },
+  "lint-staged": {
+    "backend/**/*.js": "backend/node_modules/.bin/eslint --fix",
+    "*.tf": "terraform fmt"
   },
   "devDependencies": {
     "@semantic-release/changelog": "^6.0.3",
@@ -20,6 +26,8 @@
     "@semantic-release/github": "^11.0.0",
     "@semantic-release/npm": "^12.0.1",
     "@semantic-release/release-notes-generator": "^14.0.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.10",
     "semantic-release": "^24.2.0"
   }
 }

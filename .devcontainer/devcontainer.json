@@ -1,0 +1,47 @@
+{
+  "name": "DevSecOps Platform",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:20",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/terraform:1": {
+      "version": "1.9.8"
+    },
+    "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {
+      "helm": "3.15.4",
+      "kubectl": "latest",
+      "minikube": "none"
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "postCreateCommand": "make setup",
+  "forwardPorts": [3000, 3001, 8080, 9090, 9093, 16686],
+  "portsAttributes": {
+    "3000": { "label": "Backend API" },
+    "3001": { "label": "Grafana" },
+    "8080": { "label": "Frontend" },
+    "9090": { "label": "Prometheus" },
+    "9093": { "label": "Alertmanager" },
+    "16686": { "label": "Jaeger" }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-azuretools.vscode-docker",
+        "hashicorp.terraform",
+        "ms-kubernetes-tools.vscode-kubernetes-tools",
+        "redhat.vscode-yaml",
+        "github.vscode-github-actions",
+        "EditorConfig.EditorConfig"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": { "source.fixAll.eslint": "explicit" },
+        "files.eol": "\n",
+        "terraform.languageServer.enable": true
+      }
+    }
+  },
+  "remoteUser": "node"
+}

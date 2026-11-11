@@ -1,0 +1,18 @@
+#!/usr/bin/env sh
+# Pre-commit hook (installed by husky — see `prepare` in package.json).
+#
+#   1. lint-staged  -> eslint --fix on staged backend JS, terraform fmt on staged .tf
+#   2. gitleaks     -> block the commit if a secret is staged
+#
+# Bypass in an emergency with: git commit --no-verify
+
+npx --no-install lint-staged
+
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks protect --staged --redact --no-banner || {
+    echo "gitleaks: potential secret detected in staged changes — commit blocked." >&2
+    exit 1
+  }
+else
+  echo "gitleaks not installed — skipping secret scan (see docs/security.md)."
+fi
