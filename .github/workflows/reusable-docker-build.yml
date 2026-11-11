@@ -1,0 +1,83 @@
+name: Reusable · Docker build & scan
+
+# Builds a service image, lints its Dockerfile (Hadolint), scans it for
+# HIGH/CRITICAL CVEs (Trivy) and produces an SBOM (Syft). The image is loaded
+# into the local daemon only; pushing/signing happens in main.yml after AWS
+# OIDC authentication.
+on:
+  workflow_call:
+    inputs:
+      service:
+        description: Service directory (also the image name)
+        required: true
+        type: string
+      trivy-exit-code:
+        description: Non-zero exit code when HIGH/CRITICAL vulns are found
+        required: false
+        type: string
+        default: "1"
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  build-scan:
+    name: build · hadolint · trivy · sbom
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Lint Dockerfile (Hadolint)
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: ${{ inputs.service }}/Dockerfile
+          failure-threshold: error
+          no-color: true
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./${{ inputs.service }}
+          file: ./${{ inputs.service }}/Dockerfile
+          push: false
+          load: true
+          tags: ${{ inputs.service }}:ci
+          cache-from: type=gha,scope=${{ inputs.service }}
+          cache-to: type=gha,mode=max,scope=${{ inputs.service }}
+
+      - name: Trivy image scan (HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ inputs.service }}:ci
+          format: sarif
+          output: trivy-${{ inputs.service }}.sarif
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: ${{ inputs.trivy-exit-code }}
+
+      - name: Upload Trivy SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-${{ inputs.service }}.sarif
+          category: trivy-${{ inputs.service }}
+
+      - name: Generate SBOM (Syft)
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ inputs.service }}:ci
+          format: spdx-json
+          output-file: sbom-${{ inputs.service }}.spdx.json
+
+      - name: Upload SBOM
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ inputs.service }}
+          path: sbom-${{ inputs.service }}.spdx.json
+          retention-days: 30

@@ -1,0 +1,25 @@
+{
+  "name": "devsecops-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Production-ready DevSecOps platform: Task/Notes REST API, CI/CD, Terraform multi-env, Kubernetes/GitOps, observability and SRE practices.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "lint": "npm --prefix backend run lint",
+    "test": "npm --prefix backend run test",
+    "test:coverage": "npm --prefix backend run test:coverage",
+    "release": "semantic-release"
+  },
+  "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^13.0.0",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^11.0.0",
+    "@semantic-release/npm": "^12.0.1",
+    "@semantic-release/release-notes-generator": "^14.0.1",
+    "semantic-release": "^24.2.0"
+  }
+}

@@ -1,0 +1,85 @@
+name: Reusable · Node CI
+
+# Reusable Node.js lint + test + coverage workflow.
+# Called from ci.yml (PRs) and main.yml (main branch).
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: Path to the Node.js project
+        required: true
+        type: string
+      node-version:
+        description: Node.js version to use
+        required: false
+        type: string
+        default: "20"
+
+permissions:
+  contents: read
+
+jobs:
+  node-ci:
+    name: lint · test · coverage
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node ${{ inputs.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: npm
+          cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint --if-present
+
+      - name: Test with coverage
+        run: npm run test:coverage --if-present
+        env:
+          NODE_ENV: test
+
+      - name: Enforce coverage thresholds (>80%)
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = 'coverage/coverage-summary.json';
+          if (!fs.existsSync(path)) {
+            console.error('coverage-summary.json not found - did tests run?');
+            process.exit(1);
+          }
+          const total = JSON.parse(fs.readFileSync(path, 'utf8')).total;
+          const thresholds = { lines: 80, statements: 80, functions: 80, branches: 75 };
+          let failed = false;
+          for (const key of Object.keys(thresholds)) {
+            const pct = total[key].pct;
+            const ok = pct >= thresholds[key];
+            if (!ok) failed = true;
+            console.log(`${ok ? 'PASS' : 'FAIL'}  ${key}: ${pct}% (min ${thresholds[key]}%)`);
+          }
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, [
+            '### Coverage',
+            '',
+            '| Metric | % | Threshold |',
+            '| --- | --- | --- |',
+            ...Object.keys(thresholds).map((k) => `| ${k} | ${total[k].pct}% | ${thresholds[k]}% |`),
+            ''
+          ].join('\n'));
+          if (failed) process.exit(1);
+          NODE
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ inputs.working-directory }}
+          path: ${{ inputs.working-directory }}/coverage
+          retention-days: 14

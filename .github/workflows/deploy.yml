@@ -1,44 +1,123 @@
-name: Deploy to AWS ECR
+name: Main · Build, Sign & Deploy
+
+# Runs on every push to main. Builds and scans both images, pushes them to
+# Amazon ECR using GitHub OIDC (no long-lived AWS keys), signs them with
+# Cosign (keyless / Sigstore) and optionally triggers a blue/green deploy.
 on:
   push:
-    branches:
-      - main
+    branches: [main]
 
 permissions:
-  id-token: write
   contents: read
 
+concurrency:
+  group: main-deploy
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+
 jobs:
-  deploy-to-ecr:
-    name: Build and Push to ECR
-    runs-on: ubuntu-latest
-    if: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN != '' && secrets.AWS_REGION != '' }}
+  node-ci:
+    name: Node CI (backend)
+    uses: ./.github/workflows/reusable-node-ci.yml
+    with:
+      working-directory: backend
+
+  docker-scan:
+    name: Docker build & scan (${{ matrix.service }})
     strategy:
+      fail-fast: false
       matrix:
         service: [backend, frontend]
-    
+    uses: ./.github/workflows/reusable-docker-build.yml
+    with:
+      service: ${{ matrix.service }}
+
+  publish:
+    name: Push & sign (${{ matrix.service }})
+    needs: [node-ci, docker-scan]
+    if: ${{ vars.ENABLE_AWS_DEPLOY == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [backend, frontend]
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
-      
-      - name: Configure AWS credentials
+
+      - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN }}
-          aws-region: ${{ secrets.AWS_REGION }}
-      
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gha-${{ matrix.service }}-${{ github.run_id }}
+
       - name: Login to Amazon ECR
-        id: login-ecr
+        id: ecr
         uses: aws-actions/amazon-ecr-login@v2
-      
-      - name: Build, tag, and push image to Amazon ECR
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ./${{ matrix.service }}
+          file: ./${{ matrix.service }}/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.ecr.outputs.registry }}/${{ matrix.service }}:${{ github.sha }}
+            ${{ steps.ecr.outputs.registry }}/${{ matrix.service }}:latest
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign image (keyless)
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: ${{ matrix.service }}
-          IMAGE_TAG: ${{ github.sha }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+          IMAGE: ${{ steps.ecr.outputs.registry }}/${{ matrix.service }}
         run: |
-          cd ${{ matrix.service }}
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          cosign sign --yes "${IMAGE}@${DIGEST}"
+          cosign verify \
+            --certificate-identity-regexp "https://github.com/${{ github.repository }}/.*" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "${IMAGE}@${DIGEST}"
+
+  deploy:
+    name: Deploy (blue/green)
+    needs: publish
+    if: ${{ vars.ENABLE_AWS_DEPLOY == 'true' && vars.ENABLE_DEPLOY == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Trigger CodeDeploy blue/green deployment
+        run: |
+          aws deploy create-deployment \
+            --application-name "${{ vars.CODEDEPLOY_APP_NAME }}" \
+            --deployment-group-name "${{ vars.CODEDEPLOY_GROUP_NAME }}" \
+            --deployment-config-name CodeDeployDefault.ECSAllAtOnce \
+            --revision "revisionType=AppSpecContent,appSpecContent={content='{\"version\":0.0,\"Resources\":[{\"TargetService\":{\"Type\":\"AWS::ECS::Service\",\"Properties\":{\"TaskDefinition\":\"${{ vars.ECS_TASK_DEFINITION_ARN }}\",\"LoadBalancerInfo\":{\"ContainerName\":\"backend\",\"ContainerPort\":3000}}}}]}'}" \
+            --description "GitHub Actions ${GITHUB_SHA}" \
+            --output json

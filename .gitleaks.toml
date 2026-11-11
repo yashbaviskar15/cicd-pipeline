@@ -1,0 +1,16 @@
+title = "devsecops-platform gitleaks config"
+
+# Files that legitimately contain example/placeholder values which the default
+# ruleset would otherwise flag (demo credentials, template env files, docs).
+[allowlist]
+description = "Global allowlist for docs and example files"
+paths = [
+  '''\.env\.example$''',
+  '''\.tfvars\.example$''',
+  '''docs/.*\.md$''',
+  '''runbooks/.*\.md$''',
+  '''README\.md$''',
+  '''CHANGELOG\.md$''',
+  '''package-lock\.json$''',
+  '''.*\.spdx\.json$'''
+]

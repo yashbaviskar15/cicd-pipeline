@@ -1,0 +1,7 @@
+# Rules that are not relevant for our base images / build style are ignored,
+# the rest are enforced at `error` level in CI.
+ignored:
+  - DL3006 # always tag the version of an image explicitly (we tag; digest pinning is out of scope)
+  - DL3008 # pin versions in apt-get install
+  - DL3018 # pin versions in apk add
+  - DL3059 # multiple consecutive RUN instructions (readability trade-off)
