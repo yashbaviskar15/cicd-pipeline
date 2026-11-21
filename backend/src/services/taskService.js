@@ -69,9 +69,14 @@ async function listTasks(userId, query) {
   const skip = (page - 1) * limit;
   const filters = { status: query.status, priority: query.priority, search: query.search };
 
+  let orderBy = { createdAt: 'desc' };
+  if (query.sortBy) {
+    orderBy = { [query.sortBy]: query.sortDir === 'asc' ? 'asc' : 'desc' };
+  }
+
   const [items, total] = await Promise.all([
     metrics.timeQuery('task.findMany', () =>
-      taskRepository.findManyByUser(userId, { ...filters, skip, take: limit })
+      taskRepository.findManyByUser(userId, { ...filters, skip, take: limit, orderBy })
     ),
     metrics.timeQuery('task.count', () => taskRepository.countByUser(userId, filters))
   ]);

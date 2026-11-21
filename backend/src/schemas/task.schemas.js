@@ -29,12 +29,17 @@ const updateTaskSchema = z
     message: 'At least one field must be provided'
   });
 
+const SORT_FIELDS = ['createdAt', 'updatedAt', 'title', 'dueDate', 'status', 'priority'];
+const SORT_DIRS = ['asc', 'desc'];
+
 const listTasksQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
   status: z.enum(STATUSES).optional(),
   priority: z.enum(PRIORITIES).optional(),
-  search: z.string().trim().max(200).optional()
+  search: z.string().trim().max(200).optional(),
+  sortBy: z.enum(SORT_FIELDS).optional(),
+  sortDir: z.enum(SORT_DIRS).optional()
 });
 
 const taskIdParamSchema = z.object({
@@ -44,6 +49,8 @@ const taskIdParamSchema = z.object({
 module.exports = {
   STATUSES,
   PRIORITIES,
+  SORT_FIELDS,
+  SORT_DIRS,
   createTaskSchema,
   updateTaskSchema,
   listTasksQuerySchema,
